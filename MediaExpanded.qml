@@ -1,23 +1,17 @@
 import QtQuick
 import QtQuick.Layouts
-// 🎯 SỬA LỖI CHÍ MẠNG DÒNG 3: Thêm số 5 vào giữa để nạp đúng thư viện hiệu ứng đồ họa của Qt6!
 import Qt5Compat.GraphicalEffects
 import Quickshell.Services.Mpris
 import Quickshell.Io
 import "../../../../services"
 
-
 Item {
     id: root
-
     anchors.fill: parent
 
     property var player: Players.active
     property real progress: 0
-
-    // MẢNG DỮ LIỆU SÓNG THẬT: Đồng bộ 48 vạch tần số chạy quanh đĩa nhạc
     property var smoothHeights: []
-
     property real discAngle: 0.0
 
     Component.onCompleted: {
@@ -27,23 +21,18 @@ Item {
     }
 
     // =========================================================================================
-    // 🎯 ĐỘNG CƠ CÀO LUỒNG NỘI BỘ BIÊN BIÊN: Trỏ thẳng vào file script nằm chung một thư mục!
-    // Gỡ bỏ hoàn toàn running: true lỗi, mượn sh -c kích nổ liên tục loang loáng mượt mà 60FPS!
+    // 🎯 ĐỘNG CƠ CÀO LUỒNG NỘI BỘ BIÊN BIÊN: Trỏ thẳng vào file script cava-radial nằm chung thư mục!
+    // Sử dụng sh -c bốc chính xác đường dẫn file thực thi cục bộ, giải phóng hoàn toàn lỗi kẹt sandbox Wayland!
     // =========================================================================================
     Process {
         id: localRadialCava
-        // 🎯 GIẢI PHÁP ĐẮT GIÁ: Dùng sh -c bốc chính xác file script nằm cùng thư mục thông qua vị trí hiện tại của file QML!
         command: ["sh", "-c", "stdbuf -o0 " + String(Qt.resolvedUrl("./cava-radial")).replace("file://", "")]
-
-        // Khóa chết nguồn false để nhường toàn quyền kích nổ chu kỳ cho Timer xoay vòng
         running: false
 
         stdout: StdioCollector {
             onRead: (data) => {
                 let rawText = data.toString().trim();
                 let lines = rawText.split("\n");
-
-                // Quét ngược tìm dòng chứa chuỗi số CAVA mới nhất có dấu chấm phẩy
                 let lastValidLine = "";
                 for (let idx = lines.length - 1; idx >= 0; idx--) {
                     if (lines[idx].indexOf(";") !== -1) {
@@ -51,12 +40,9 @@ Item {
                         break;
                     }
                 }
-
                 if (lastValidLine.length > 0) {
                     let parts = lastValidLine.split(";");
                     let tempBars = [];
-
-                    // Màng lọc ma trận loại bỏ sạch sành sanh các chuỗi rỗng đầu/cuối
                     for (let i = 0; i < parts.length; i++) {
                         let txt = parts[i].trim();
                         if (txt.length > 0) {
@@ -64,13 +50,10 @@ Item {
                             tempBars.push(isNaN(val) ? 0 : val);
                         }
                     }
-
-                    // Nẹp cứng ma trận: Đủ mảng 48 vạch tần số mới đẩy lên dải Repeater quay tròn
                     if (tempBars.length >= 48) {
                         let smooths = [...root.smoothHeights];
                         for (let j = 0; j < 48; j++) {
                             if (tempBars[j] !== undefined) {
-                                // Hệ số quán tính lò xo 0.25 nhún nhảy mịn màng mượt mà 60FPS+
                                 smooths[j] = smooths[j] + (tempBars[j] - smooths[j]) * 0.25;
                             }
                         }
@@ -81,25 +64,18 @@ Item {
         }
     }
 
-    // 🎯 BỘ KÍCH XUNG NHỊP THỐC LUỒNG 60FPS
+    // Bộ kích xung nhịp thốc lệnh chu kỳ 16ms (Chuẩn mượt mà 60FPS)
     Timer {
         id: radialCavaPulseTimer
-        interval: 16
-        running: true
-        repeat: true
+        interval: 16; running: true; repeat: true
         onTriggered: {
             localRadialCava.running = false;
             localRadialCava.running = true;
         }
     }
 
-
-
-
-    // 2. TIMER TIẾN TRÌNH PROGRESS BAR
     Timer {
-        interval: 500
-        running: Players.isPlaying; repeat: true; triggeredOnStart: true
+        interval: 500; running: Players.isPlaying; repeat: true; triggeredOnStart: true
         onTriggered: {
             if (root.player) {
                 root.player.positionChanged();
@@ -108,7 +84,6 @@ Item {
         }
     }
 
-    // 3. TIMER ĐỘNG CƠ ĐĨA XOAY 60FPS
     Timer {
         id: discMotorTimer
         interval: 16; running: Players.isPlaying; repeat: true; triggeredOnStart: true
@@ -117,25 +92,24 @@ Item {
         }
     }
 
-    function getPlayerName() {
-        if (!root.player) return "No Player";
-        let identity = String(root.player.identity || "").trim();
-        return identity.length > 0 ? identity.charAt(0).toUpperCase() + identity.slice(1) : "Media Player";
-    }
-
     function formatTime(sec) {
         if (!sec || sec < 0 || isNaN(sec)) return "0:00";
         let min = Math.floor(sec / 60); let s = Math.floor(sec % 60);
         return min + ":" + (s < 10 ? "0" + s : s);
     }
 
+    // KHUNG CHỨA LAYOUT CHÍNH: Thu hẹp chiều dọc bớt 40px để chừa lề đáy cho Progress Bar nằm biệt lập
     RowLayout {
-        anchors.fill: parent; anchors.margins: 16; spacing: 20
+        width: parent.width
+        height: parent.height - 40
+        anchors.top: parent.top
+        anchors.margins: 14
+        spacing: 16
 
-        // ================= KHỐI 1: ĐĨA TRÒN VÀ VÒNG SÓNG CAVA PHÓNG ĐẠI KÍCH THƯỚC =================
+        // KHỐI 1: CAVA VÀ ĐĨA NHẠC (NỚI RỘNG KHÔNG GIAN LÊN 140PX)
         Item {
-            id: albumContainer; Layout.preferredWidth: 120; Layout.fillHeight: true; Layout.alignment: Qt.AlignVCenter
-
+            id: albumContainer
+            Layout.preferredWidth: 140; Layout.fillHeight: true; Layout.alignment: Qt.AlignVCenter
             Item {
                 id: radialCavaContainer; anchors.centerIn: parent; width: 110; height: 110
                 Repeater {
@@ -143,35 +117,18 @@ Item {
                     Item {
                         anchors.fill: parent; transformOrigin: Item.Center; rotation: index * (360 / 48)
                         Rectangle {
-                            anchors.bottom: parent.top;
-                            anchors.horizontalCenter: parent.horizontalCenter;
-
-                            // 🎯 NỚI RỘNG KHOẢNG ĐỆM: Đẩy chân vạch sóng lùi xa rìa viền đĩa 4px cho thoáng hẳn ra ngoài!
-                            anchors.bottomMargin: 4;
-                            width: 3;
-
-                            // 🎯 TOÁN HỌC PHÓNG ĐẠI CHIỀU CAO VÀNG: Nhân thêm 1.5 lần biên độ thô để cột sóng vọt dài lên tới 55px,
-                            // bung tràn lộng lẫy ra ngoài lớp kính viền đĩa nhạc, không bao giờ bị che khuất nữa!
-                            height: root.smoothHeights[index] !== undefined ? Math.max(2, root.smoothHeights[index] * 1.5) : 2;
-
-                            radius: 1.5;
-                            color: index % 2 === 0 ? "#ff006a" : "#F5C2E7";
-                            opacity: Players.isPlaying ? 0.95 : 0.25
-
+                            anchors.bottom: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottomMargin: 8; width: 3
+                            height: (root.smoothHeights && root.smoothHeights[index] !== undefined) ? Math.max(4, root.smoothHeights[index] * 1.5) : 4;
+                            radius: 1.5; color: index % 2 === 0 ? "#ff006a" : "#F5C2E7"; opacity: 0.85
                             Behavior on height { NumberAnimation { duration: 60 } }
                         }
                     }
                 }
             }
-
             Rectangle {
                 id: albumBorderCircle; anchors.centerIn: parent; width: 110; height: 110; radius: 55; color: "#1a1625"; border.width: 2; border.color: "#ff006a"; z: 2
-
                 Item {
-                    id: rotatingCore
-                    anchors.fill: parent
-                    rotation: root.discAngle
-
+                    id: rotatingCore; anchors.fill: parent; rotation: root.discAngle
                     Image { id: albumArtSource; anchors.fill: parent; anchors.margins: 3; source: root.player ? Players.getArtUrl(root.player) : ""; fillMode: Image.PreserveAspectCrop; visible: false }
                     Rectangle { id: maskCircle; anchors.fill: parent; anchors.margins: 3; radius: width / 2; visible: false }
                     OpacityMask { anchors.fill: parent; anchors.margins: 3; source: albumArtSource; maskSource: maskCircle; visible: albumArtSource.status === Image.Ready }
@@ -180,30 +137,26 @@ Item {
             }
         }
 
-
-        // ================= KHỐI 2: CHI TIẾT BÀI HÁT TỐI GIẢN CHUẨN HI-TECH =================
+        // ================= KHỐI 2: CHI TIẾT TIÊU ĐỀ BÀI HÁT TỐI GIẢN CHUẨN HI-TECH PHẲNG =================
+        // Đã trục xuất hoàn toàn Lyrics và thanh Progress Bar cũ ra ngoài để giải phóng không gian thênh thang!
         ColumnLayout {
             id: middleInfoBlock
-            Layout.fillWidth: true; Layout.fillHeight: true; Layout.alignment: Qt.AlignVCenter; spacing: 4
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: 2
 
             ColumnLayout {
-                Layout.fillWidth: true; spacing: 1
-                Text { text: root.player ? root.player.trackTitle || "Unknown Track" : "No Music Playing"; font.pixelSize: 13; font.bold: true; color: "#ffffff"; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; elide: Text.ElideRight }
-                Text { text: root.player ? root.player.trackArtist || "Unknown Artist" : ""; font.pixelSize: 10; color: "#F5C2E7"; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; elide: Text.ElideRight }
+                Layout.fillWidth: true
+                spacing: 2
+                Text { text: root.player ? root.player.trackTitle || "Unknown Track" : "No Music Playing"; font.pixelSize: 14; font.bold: true; color: "#ffffff"; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; elide: Text.ElideRight }
+                Text { text: root.player ? root.player.trackArtist || "Unknown Artist" : ""; font.pixelSize: 11; color: "#F5C2E7"; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; elide: Text.ElideRight }
             }
 
-            ColumnLayout {
-                Layout.fillWidth: true; Layout.preferredHeight: 75; spacing: 2; Layout.alignment: Qt.AlignHCenter
-                Text { text: "•  •  •  •  •  •  •  •  •  •  •  •  •  •  •"; color: "#ffffff"; opacity: 0.12; font.pixelSize: 9; Layout.alignment: Qt.AlignHCenter }
-                Text {
-                    text: root.player ? "💿 Album: " + (root.player.trackAlbum || "Single Track") : "Waiting for audio pipeline..."
-                    color: "#ff006a"; font.pixelSize: 11; font.bold: true; Layout.alignment: Qt.AlignHCenter; elide: Text.ElideRight; Layout.maximumWidth: 240
-                }
-                Text { text: "✨ Audio Pipeline Status: Synced"; color: "#ffffff"; opacity: 0.35; font.pixelSize: 9; Layout.alignment: Qt.AlignHCenter }
-                Text { text: "•  •  •  •  •  •  •  •  •  •  •  •  •  •  •"; color: "#ffffff"; opacity: 0.12; font.pixelSize: 9; Layout.alignment: Qt.AlignHCenter }
-            }
+            // Tạo khoảng trống mênh mông ở giữa để đẩy các chữ dạt lên thềm trên thoáng mắt
+            Item { Layout.fillWidth: true; Layout.fillHeight: true }
 
-            // THANH TIẾN TRÌNH TUA NHẠC CẢM ỨNG CHUỘT
+            // THANH TIẾN TRÌNH PROGRESS BAR CẢM ỨNG CHUỘT THON GỌN PHẲNG MỊN
             Rectangle {
                 id: progressBg
                 Layout.fillWidth: true; height: 10; color: "transparent"
@@ -221,9 +174,9 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: root.player ? root.formatTime(root.player.position) : "0:00"; color: "#ff006a"; font.pixelSize: 9 }
+                Text { text: root.player ? root.formatTime(root.player.position) : "0:00"; color: "#ff006a"; font.pixelSize: 10; font.bold: true }
                 Item { Layout.fillWidth: true }
-                Text { text: root.player ? root.formatTime(root.player.length) : "0:00"; color: "#ffffff"; font.pixelSize: 9; opacity: 0.5 }
+                Text { text: root.player ? root.formatTime(root.player.length) : "0:00"; color: "#ffffff"; font.pixelSize: 10; opacity: 0.5 }
             }
 
             // BỘ NÚT MIXER PHẲNG MẢNH TO RỘNG CHỐNG ẤN HỤT (VÙNG ĐỆM CLICK VÀNG 36x36)
@@ -312,7 +265,7 @@ Item {
 
         // ================= KHỐI 3: KHUNG CHỨA ẢNH GIF 5TOCGJ DẠT PHẢI =================
         Item {
-            Layout.preferredWidth: 140; Layout.preferredHeight: 110; Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: 200; Layout.preferredHeight: 160; Layout.alignment: Qt.AlignVCenter
             AnimatedImage { id: customDashboardGif; anchors.fill: parent; source: "file:///home/alone/Documents/logos/5tocgj.gif"; fillMode: Image.PreserveAspectFit; playing: Players.isPlaying; visible: status === AnimatedImage.Ready || status === AnimatedImage.Loading }
             Text { anchors.centerIn: parent; text: "🎵"; font.pixelSize: 28; color: "#F5C2E7"; visible: customDashboardGif.status === AnimatedImage.Error }
         }
