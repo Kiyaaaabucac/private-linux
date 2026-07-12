@@ -1,9 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
+// 🎯 SỬA LỖI CHÍ MẠNG DÒNG 3: Thêm số 5 vào giữa để nạp đúng thư viện hiệu ứng đồ họa của Qt6!
 import Qt5Compat.GraphicalEffects
 import Quickshell.Services.Mpris
 import Quickshell.Io
 import "../../../../services"
+
 
 Item {
     id: root
@@ -12,9 +14,10 @@ Item {
 
     property var player: Players.active
     property real progress: 0
+
+    // MẢNG DỮ LIỆU SÓNG THẬT: Đồng bộ 48 vạch tần số chạy quanh đĩa nhạc
     property var smoothHeights: []
 
-    // BIẾN SỐ TOÁN HỌC TỐI CAO: Lưu trữ góc quay thực tế của đĩa nhạc (0 -> 360 độ)
     property real discAngle: 0.0
 
     Component.onCompleted: {
@@ -23,22 +26,77 @@ Item {
         root.smoothHeights = zeroArray;
     }
 
-    // 1. TIMER CAVA DỌC MƯỢT MÀ 60FPS
-    Timer {
-        id: smoothCavaTimer
-        interval: 16; running: Players.isPlaying; repeat: true
-        onTriggered: {
-            let nextSmooths = [...root.smoothHeights];
-            for (let j = 0; j < 48; j++) {
-                let current = nextSmooths[j];
-                let target = Players.isPlaying ? Math.floor(Math.random() * 26) + 2 : 2;
-                nextSmooths[j] = current + (target - current) * 0.15;
+    // =========================================================================================
+    // 🎯 ĐỘNG CƠ CÀO LUỒNG NỘI BỘ BIÊN BIÊN: Trỏ thẳng vào file script nằm chung một thư mục!
+    // Gỡ bỏ hoàn toàn running: true lỗi, mượn sh -c kích nổ liên tục loang loáng mượt mà 60FPS!
+    // =========================================================================================
+    Process {
+        id: localRadialCava
+        // 🎯 GIẢI PHÁP ĐẮT GIÁ: Dùng sh -c bốc chính xác file script nằm cùng thư mục thông qua vị trí hiện tại của file QML!
+        command: ["sh", "-c", "stdbuf -o0 " + String(Qt.resolvedUrl("./cava-radial")).replace("file://", "")]
+
+        // Khóa chết nguồn false để nhường toàn quyền kích nổ chu kỳ cho Timer xoay vòng
+        running: false
+
+        stdout: StdioCollector {
+            onRead: (data) => {
+                let rawText = data.toString().trim();
+                let lines = rawText.split("\n");
+
+                // Quét ngược tìm dòng chứa chuỗi số CAVA mới nhất có dấu chấm phẩy
+                let lastValidLine = "";
+                for (let idx = lines.length - 1; idx >= 0; idx--) {
+                    if (lines[idx].indexOf(";") !== -1) {
+                        lastValidLine = lines[idx].trim();
+                        break;
+                    }
+                }
+
+                if (lastValidLine.length > 0) {
+                    let parts = lastValidLine.split(";");
+                    let tempBars = [];
+
+                    // Màng lọc ma trận loại bỏ sạch sành sanh các chuỗi rỗng đầu/cuối
+                    for (let i = 0; i < parts.length; i++) {
+                        let txt = parts[i].trim();
+                        if (txt.length > 0) {
+                            let val = parseInt(txt);
+                            tempBars.push(isNaN(val) ? 0 : val);
+                        }
+                    }
+
+                    // Nẹp cứng ma trận: Đủ mảng 48 vạch tần số mới đẩy lên dải Repeater quay tròn
+                    if (tempBars.length >= 48) {
+                        let smooths = [...root.smoothHeights];
+                        for (let j = 0; j < 48; j++) {
+                            if (tempBars[j] !== undefined) {
+                                // Hệ số quán tính lò xo 0.25 nhún nhảy mịn màng mượt mà 60FPS+
+                                smooths[j] = smooths[j] + (tempBars[j] - smooths[j]) * 0.25;
+                            }
+                        }
+                        root.smoothHeights = smooths;
+                    }
+                }
             }
-            root.smoothHeights = nextSmooths;
         }
     }
 
-    // 2. TIMER TIẾN TRÌNH: Đồng bộ thanh trượt Progress Bar thời gian bài hát
+    // 🎯 BỘ KÍCH XUNG NHỊP THỐC LUỒNG 60FPS
+    Timer {
+        id: radialCavaPulseTimer
+        interval: 16
+        running: true
+        repeat: true
+        onTriggered: {
+            localRadialCava.running = false;
+            localRadialCava.running = true;
+        }
+    }
+
+
+
+
+    // 2. TIMER TIẾN TRÌNH PROGRESS BAR
     Timer {
         interval: 500
         running: Players.isPlaying; repeat: true; triggeredOnStart: true
@@ -50,16 +108,11 @@ Item {
         }
     }
 
-    // 3. GIẢI PHÁP ĐẮT GIÁ: TIMER ĐỘNG CƠ ĐĨA XOAY 60FPS ĐỘC LẬP
-    // Chạy chu kỳ 16ms. Nhạc phát thì cộng dồn góc, nhạc dừng thì Timer tắt ngắt lệnh, đóng băng đĩa 100% tại chỗ!
+    // 3. TIMER ĐỘNG CƠ ĐĨA XOAY 60FPS
     Timer {
         id: discMotorTimer
-        interval: 16
-        running: Players.isPlaying
-        repeat: true
-        triggeredOnStart: true
+        interval: 16; running: Players.isPlaying; repeat: true; triggeredOnStart: true
         onTriggered: {
-            // Mỗi khung hình tịnh tiến thêm 0.6 độ. Muốn đĩa xoay nhanh hơn thì tăng số 0.6 này lên nhé!
             root.discAngle = (root.discAngle + 0.6) % 360.0;
         }
     }
@@ -79,18 +132,34 @@ Item {
     RowLayout {
         anchors.fill: parent; anchors.margins: 16; spacing: 20
 
-        // ================= KHỐI 1: ĐĨA TRÒN KHÓA CỨNG TOẠ ĐỘ GÓC KHI PAUSE NHẠC =================
+        // ================= KHỐI 1: ĐĨA TRÒN VÀ VÒNG SÓNG CAVA PHÓNG ĐẠI KÍCH THƯỚC =================
         Item {
             id: albumContainer; Layout.preferredWidth: 120; Layout.fillHeight: true; Layout.alignment: Qt.AlignVCenter
 
-            // Dải vạch vạt cột đứng bọc ngoài (CAVA)
             Item {
                 id: radialCavaContainer; anchors.centerIn: parent; width: 110; height: 110
                 Repeater {
                     model: 48
                     Item {
                         anchors.fill: parent; transformOrigin: Item.Center; rotation: index * (360 / 48)
-                        Rectangle { anchors.bottom: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottomMargin: 2; width: 3; height: root.smoothHeights[index] !== undefined ? root.smoothHeights[index] : 2; radius: 1.5; color: index % 2 === 0 ? "#ff006a" : "#F5C2E7"; opacity: 0.8 }
+                        Rectangle {
+                            anchors.bottom: parent.top;
+                            anchors.horizontalCenter: parent.horizontalCenter;
+
+                            // 🎯 NỚI RỘNG KHOẢNG ĐỆM: Đẩy chân vạch sóng lùi xa rìa viền đĩa 4px cho thoáng hẳn ra ngoài!
+                            anchors.bottomMargin: 4;
+                            width: 3;
+
+                            // 🎯 TOÁN HỌC PHÓNG ĐẠI CHIỀU CAO VÀNG: Nhân thêm 1.5 lần biên độ thô để cột sóng vọt dài lên tới 55px,
+                            // bung tràn lộng lẫy ra ngoài lớp kính viền đĩa nhạc, không bao giờ bị che khuất nữa!
+                            height: root.smoothHeights[index] !== undefined ? Math.max(2, root.smoothHeights[index] * 1.5) : 2;
+
+                            radius: 1.5;
+                            color: index % 2 === 0 ? "#ff006a" : "#F5C2E7";
+                            opacity: Players.isPlaying ? 0.95 : 0.25
+
+                            Behavior on height { NumberAnimation { duration: 60 } }
+                        }
                     }
                 }
             }
@@ -101,8 +170,6 @@ Item {
                 Item {
                     id: rotatingCore
                     anchors.fill: parent
-
-                    // Ghép trục xoay của đĩa ăn chặt 100% theo giá trị số thực của root.discAngle
                     rotation: root.discAngle
 
                     Image { id: albumArtSource; anchors.fill: parent; anchors.margins: 3; source: root.player ? Players.getArtUrl(root.player) : ""; fillMode: Image.PreserveAspectCrop; visible: false }
@@ -112,6 +179,7 @@ Item {
                 }
             }
         }
+
 
         // ================= KHỐI 2: CHI TIẾT BÀI HÁT TỐI GIẢN CHUẨN HI-TECH =================
         ColumnLayout {
