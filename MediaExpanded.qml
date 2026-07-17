@@ -1,273 +1,2196 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
+
 import Quickshell.Services.Mpris
 import Quickshell.Io
+
 import "../../../../services"
 
+
 Item {
+
     id: root
+
     anchors.fill: parent
 
-    property var player: Players.active
-    property real progress: 0
-    property var smoothHeights: []
-    property real discAngle: 0.0
 
-    Component.onCompleted: {
-        let zeroArray = [];
-        for (let i = 0; i < 48; i++) zeroArray.push(2);
-        root.smoothHeights = zeroArray;
+    property int gifX:1000
+    property int gifY:200
+
+    property var bars:[]
+
+    property MprisPlayer player:
+    Players.active
+
+
+    property real progress:0
+
+
+    property var smoothHeights:[]
+
+    property var tracker: MediaTracker
+
+    property real discAngle:0
+
+
+    property string displayLyrics:""
+    property bool lyricsSettingsOpen:false
+
+    Component.onCompleted:{
+
+
+        let arr=[]
+
+
+        for(let i=0;i<48;i++)
+            arr.push(2)
+
+
+            root.smoothHeights=arr
+
+
+            console.log(
+                "MEDIA LOADED"
+            )
+
+            console.log(
+                "CURRENT LYRICS:",
+                Lyrics.currentLyrics
+            )
+
+            console.log(
+                "MEDIA EXPANDED START"
+            )
+
+
+            console.log(
+                "TRACKER:",
+                MediaTracker
+            )
+
     }
 
-    // =========================================================================================
-    // 🎯 ĐỘNG CƠ CÀO LUỒNG NỘI BỘ BIÊN BIÊN: Trỏ thẳng vào file script cava-radial nằm chung thư mục!
-    // Sử dụng sh -c bốc chính xác đường dẫn file thực thi cục bộ, giải phóng hoàn toàn lỗi kẹt sandbox Wayland!
-    // =========================================================================================
+
+
+
+
+
+    //
+    // ===============================
+    // LYRICS CONNECTION
+    // ===============================
+    //
+
+    signal openLyricsSettings()
+
+
+    function toggleLyricsSettings()
+    {
+        console.log("REQUEST OPEN LYRICS SETTINGS")
+
+        openLyricsSettings()
+    }
+
+    Connections {
+
+        target: root.player
+
+        ignoreUnknownSignals:true
+
+        function onLoopStatusChanged(){
+
+            loopIcon.textChanged()
+        }
+
+        function onTrackTitleChanged(){
+
+            Lyrics.currentLine
+
+        }
+
+
+    }
+
+
+
+
+
+    Timer {
+        interval:1000
+        running:true
+        repeat:true
+
+        onTriggered:{
+            console.log(
+                "CURRENT LINE:",
+                Lyrics.currentLine
+            )
+        }
+    }
+
+    Timer {
+
+        interval:500
+
+        running:true
+
+        repeat:true
+
+
+        onTriggered:{
+
+            root.active =
+            root.active
+
+        }
+
+    }
+
+
+    //
+    // ===============================
+    // CAVA
+    // ===============================
+    //
+
+
+
     Process {
-        id: localRadialCava
-        command: ["sh", "-c", "stdbuf -o0 " + String(Qt.resolvedUrl("./cava-radial")).replace("file://", "")]
-        running: false
 
-        stdout: StdioCollector {
-            onRead: (data) => {
-                let rawText = data.toString().trim();
-                let lines = rawText.split("\n");
-                let lastValidLine = "";
-                for (let idx = lines.length - 1; idx >= 0; idx--) {
-                    if (lines[idx].indexOf(";") !== -1) {
-                        lastValidLine = lines[idx].trim();
-                        break;
-                    }
+
+        id:cavaProcess
+
+
+
+        command:[
+
+            "bash",
+            "-c",
+
+            "/home/alone/.config/quickshell/default/modules/dashboard/modules/media/cava-radial"
+
+        ]
+
+
+
+        running:true
+
+
+
+        stdout:SplitParser{
+
+
+            onRead:line=>{
+
+
+                let values =
+                line.split(";")
+                .filter(v=>v!=="")
+                .map(Number)
+
+
+
+                root.bars=values
+
+
+
+                let smooth=[]
+
+
+
+                for(let i=0;i<values.length;i++){
+
+
+                    let old =
+                    root.smoothHeights[i] || 0
+
+
+
+                    smooth.push(
+
+                        old +
+                        (
+                            values[i]-old
+                        )
+                        *
+                        0.35
+
+                    )
+
                 }
-                if (lastValidLine.length > 0) {
-                    let parts = lastValidLine.split(";");
-                    let tempBars = [];
-                    for (let i = 0; i < parts.length; i++) {
-                        let txt = parts[i].trim();
-                        if (txt.length > 0) {
-                            let val = parseInt(txt);
-                            tempBars.push(isNaN(val) ? 0 : val);
-                        }
-                    }
-                    if (tempBars.length >= 48) {
-                        let smooths = [...root.smoothHeights];
-                        for (let j = 0; j < 48; j++) {
-                            if (tempBars[j] !== undefined) {
-                                smooths[j] = smooths[j] + (tempBars[j] - smooths[j]) * 0.25;
-                            }
-                        }
-                        root.smoothHeights = smooths;
-                    }
+
+
+
+                root.smoothHeights=smooth
+
+
+            }
+
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+    //
+    // ===============================
+    // MUSIC PROGRESS TIMER
+    // ===============================
+    //
+
+
+
+    Timer {
+
+
+        interval:50
+
+
+        running:true
+
+
+        repeat:true
+
+
+
+        onTriggered:{
+
+
+            if(!root.player)
+                return
+
+
+
+
+                if(root.player.length>0){
+
+
+                    root.progress =
+
+                    Math.max(
+
+                        0,
+
+                        Math.min(
+
+                            1,
+
+                            root.player.position /
+                            root.player.length
+
+                        )
+
+                    )
+
                 }
-            }
+
+                else{
+
+                    root.progress=0
+
+                }
+
+
         }
+
     }
 
-    // Bộ kích xung nhịp thốc lệnh chu kỳ 16ms (Chuẩn mượt mà 60FPS)
-    Timer {
-        id: radialCavaPulseTimer
-        interval: 16; running: true; repeat: true
-        onTriggered: {
-            localRadialCava.running = false;
-            localRadialCava.running = true;
-        }
-    }
 
-    Timer {
-        interval: 500; running: Players.isPlaying; repeat: true; triggeredOnStart: true
-        onTriggered: {
-            if (root.player) {
-                root.player.positionChanged();
-                root.progress = root.player.length > 0 ? Math.min(1.0, Math.max(0.0, root.player.position / root.player.length)) : 0;
-            }
-        }
-    }
+    //
+    // ===============================
+    // DISC ROTATE
+    // ===============================
+    //
+
+
 
     Timer {
-        id: discMotorTimer
-        interval: 16; running: Players.isPlaying; repeat: true; triggeredOnStart: true
-        onTriggered: {
-            root.discAngle = (root.discAngle + 0.6) % 360.0;
+
+
+        interval:16
+
+
+        running:
+        Players.isPlaying
+
+
+        repeat:true
+
+
+
+        onTriggered:{
+
+
+            root.discAngle =
+            (
+                root.discAngle+0.6
+            )
+            %
+            360
+
+
         }
+
     }
 
-    function formatTime(sec) {
-        if (!sec || sec < 0 || isNaN(sec)) return "0:00";
-        let min = Math.floor(sec / 60); let s = Math.floor(sec % 60);
-        return min + ":" + (s < 10 ? "0" + s : s);
+
+
+
+
+
+
+
+    function formatTime(sec){
+
+
+        if(!sec || isNaN(sec))
+            return "0:00"
+
+
+
+            let m =
+            Math.floor(sec/60)
+
+
+
+            let s =
+            Math.floor(sec%60)
+
+
+
+            return m+":"+
+            (
+                s<10
+                ?
+                "0"+s
+                :
+                s
+            )
+
     }
 
-    // KHUNG CHỨA LAYOUT CHÍNH: Thu hẹp chiều dọc bớt 40px để chừa lề đáy cho Progress Bar nằm biệt lập
-    RowLayout {
-        width: parent.width
-        height: parent.height - 40
-        anchors.top: parent.top
-        anchors.margins: 14
-        spacing: 16
+    function getPlayerName(){
 
-        // KHỐI 1: CAVA VÀ ĐĨA NHẠC (NỚI RỘNG KHÔNG GIAN LÊN 140PX)
+
+        if(!root.player)
+            return "No Player"
+
+
+
+            let id =
+            String(
+                root.player.identity
+            )
+
+
+
+            if(id.length>15)
+                id=id.substring(0,15)
+
+
+
+                return id
+
+    }
+
+    // =====================================================
+    // Lyrics
+    // =====================================================
+
+    Item {
+
+
+
+        id:lyricsWidget
+
+        width:500
+        height:160
+
+
+        x:195
+        y:83
+
+
+
+        Rectangle {
+
+            id:lyrics
+
+            anchors.fill:parent
+
+            radius:16
+
+            color:"#3d1b32"
+
+            opacity:0
+
+        }
+
+
+
+
+
         Item {
-            id: albumContainer
-            Layout.preferredWidth: 140; Layout.fillHeight: true; Layout.alignment: Qt.AlignVCenter
-            Item {
-                id: radialCavaContainer; anchors.centerIn: parent; width: 110; height: 110
-                Repeater {
-                    model: 48
-                    Item {
-                        anchors.fill: parent; transformOrigin: Item.Center; rotation: index * (360 / 48)
-                        Rectangle {
-                            anchors.bottom: parent.top; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottomMargin: 8; width: 3
-                            height: (root.smoothHeights && root.smoothHeights[index] !== undefined) ? Math.max(4, root.smoothHeights[index] * 1.5) : 4;
-                            radius: 1.5; color: index % 2 === 0 ? "#ff006a" : "#F5C2E7"; opacity: 0.85
-                            Behavior on height { NumberAnimation { duration: 60 } }
-                        }
+
+            id:lyricsBox
+
+            anchors.fill:parent
+
+            clip:true
+
+
+
+
+            Column {
+
+                id:lyricColumn
+
+
+                width:parent.width
+
+
+                spacing:8
+
+
+                y:0
+
+
+
+                Behavior on y {
+
+                    NumberAnimation {
+
+                        duration:450
+
+                        easing.type:Easing.OutCubic
+
                     }
+
                 }
-            }
-            Rectangle {
-                id: albumBorderCircle; anchors.centerIn: parent; width: 110; height: 110; radius: 55; color: "#1a1625"; border.width: 2; border.color: "#ff006a"; z: 2
+
+
+
+
+
+
+                // =========================
+                // PREVIOUS
+                // =========================
+
+
+                Text {
+
+
+                    id:previousLyric
+
+
+                    width:parent.width
+
+
+
+                    text:
+
+                    Lyrics.displayedIndex > 0
+
+                    ?
+
+                    Lyrics.lyricLines[
+                        Lyrics.displayedIndex-1
+                    ].text
+
+                    :
+
+                    ""
+
+
+
+                    horizontalAlignment:
+                    Text.AlignHCenter
+
+
+
+                    wrapMode:
+                    Text.Wrap
+
+
+
+                    color:"#F5C2E7"
+
+
+                    opacity:0.35
+
+
+
+                    font.pixelSize:11
+
+
+
+                }
+
+
+
+
+
+
+
+
+                Rectangle {
+
+                    width:220
+
+                    height:1
+
+
+                    anchors.horizontalCenter:
+                    parent.horizontalCenter
+
+
+
+                    color:"#ff006a"
+
+
+                    opacity:0.5
+
+                }
+
+
+
+
+
+
+
+                // =========================
+                // CURRENT KARAOKE
+                // =========================
+
                 Item {
-                    id: rotatingCore; anchors.fill: parent; rotation: root.discAngle
-                    Image { id: albumArtSource; anchors.fill: parent; anchors.margins: 3; source: root.player ? Players.getArtUrl(root.player) : ""; fillMode: Image.PreserveAspectCrop; visible: false }
-                    Rectangle { id: maskCircle; anchors.fill: parent; anchors.margins: 3; radius: width / 2; visible: false }
-                    OpacityMask { anchors.fill: parent; anchors.margins: 3; source: albumArtSource; maskSource: maskCircle; visible: albumArtSource.status === Image.Ready }
-                    Text { anchors.centerIn: parent; text: "🎵"; font.pixelSize: 32; visible: albumArtSource.status !== Image.Ready; color: "#F5C2E7" }
+
+                    id: currentLyric
+
+                    width: parent.width
+                    height:45
+
+
+                    property string currentText:
+                    Lyrics.currentLine
+
+
+
+                    Text {
+
+                        id:baseText
+
+                        height:30
+
+                        width:Math.min(
+                            implicitWidth,
+                            490
+                        )
+
+                        maximumLineCount:1
+
+                        elide:Text.ElideRight
+
+
+                        anchors.horizontalCenter:
+                        parent.horizontalCenter
+
+
+                        anchors.verticalCenter:
+                        parent.verticalCenter
+
+
+
+                        text:
+                        currentLyric.currentText
+
+
+
+                        color:"#555"
+
+
+
+                        horizontalAlignment:
+                        Text.AlignHCenter
+
+
+                        verticalAlignment:
+                        Text.AlignVCenter
+
+
+
+                        font.pixelSize:11
+
+                        font.bold:true
+
+
+                    }
+
+
+
+                    Item {
+
+                        id:karoMask
+
+
+                        anchors.left:
+                        baseText.left
+
+
+                        anchors.top:
+                        baseText.top
+
+
+
+                        width:
+
+                        baseText.width *
+                        Lyrics.lineProgress
+
+
+
+                        height:
+                        baseText.height
+
+
+
+                        clip:true
+
+
+
+                        Text {
+
+                            id:karoText
+
+
+                            width:
+                            baseText.width
+
+
+                            height:
+                            baseText.height
+
+
+
+                            text:
+                            currentLyric.currentText
+
+
+
+                            color:"#ff006a"
+
+
+
+                            horizontalAlignment:
+                            Text.AlignHCenter
+
+
+                            verticalAlignment:
+                            Text.AlignVCenter
+
+
+
+                            font.pixelSize:11
+
+                            font.bold:true
+
+                            layer.enabled:true
+
+
+                            layer.effect:
+
+                            DropShadow {
+
+
+                                radius:8
+
+
+                                samples:16
+
+
+                                color:"#ff006a"
+
+
+                            }
+
+
+                        }
+
+
+                    }
+
+
+
+
+
+
+
+
+                    scale:1
+
+
+
+                    Behavior on scale {
+
+
+                        NumberAnimation {
+
+
+                            duration:250
+
+
+                            easing.type:
+
+                            Easing.OutBack
+
+
+                        }
+
+                    }
+
+
+
+                    opacity:1
+
+
+                    Behavior on opacity {
+
+
+                        NumberAnimation {
+
+
+                            duration:250
+
+
+                        }
+
+                    }
+
+
                 }
+
+
+
+
+
+
+
+
+
+                Rectangle {
+
+                    width:220
+
+                    height:1
+
+
+                    anchors.horizontalCenter:
+                    parent.horizontalCenter
+
+
+                    color:"#ff006a"
+
+
+                    opacity:0.5
+
+                }
+
+
+
+
+
+
+
+
+                // =========================
+                // NEXT
+                // =========================
+
+
+                Text {
+
+
+                    id:nextLyric
+
+
+
+                    width:parent.width
+
+
+
+
+                    text:
+
+
+                    Lyrics.displayedIndex + 1
+                    <
+                    Lyrics.lyricLines.length
+
+                    ?
+
+                    Lyrics.lyricLines[
+                        Lyrics.displayedIndex+1
+                    ].text
+
+                    :
+
+                    ""
+
+
+
+                    horizontalAlignment:
+
+                    Text.AlignHCenter
+
+
+
+                    wrapMode:
+
+                    Text.Wrap
+
+
+
+                    color:"#F5C2E7"
+
+
+                    opacity:0.35
+
+
+
+                    font.pixelSize:11
+
+
+                }
+
+
+
             }
+
+
+
+
+
+
+
+
+
+            // =========================
+            // SLIDE ANIMATION
+            // =========================
+
+            SequentialAnimation {
+
+                id:lyricFade
+
+
+                ParallelAnimation {
+
+
+                    NumberAnimation {
+
+                        target:currentLyric
+
+                        property:"opacity"
+
+                        from:0.5
+
+                        to:1
+
+                        duration:150
+
+                    }
+
+
+
+                    NumberAnimation {
+
+                        target:currentLyric
+
+                        property:"scale"
+
+                        from:1.08
+
+                        to:1
+
+                        duration:250
+
+                        easing.type:Easing.OutBack
+
+                    }
+
+                }
+
+            }
+
+            NumberAnimation {
+                target: lyricColumn
+                property: "y"
+                from: 18
+                to: 0
+                duration: 180
+            }
+
         }
 
-        // ================= KHỐI 2: CHI TIẾT TIÊU ĐỀ BÀI HÁT TỐI GIẢN CHUẨN HI-TECH PHẲNG =================
-        // Đã trục xuất hoàn toàn Lyrics và thanh Progress Bar cũ ra ngoài để giải phóng không gian thênh thang!
+
+
+        Connections {
+
+
+            target:Lyrics
+
+
+
+
+
+            function onCurrentIndexChanged(){
+
+                Lyrics.displayedIndex =
+                Lyrics.currentIndex
+
+
+                currentLyric.scale=1.08
+
+                lyricFade.restart()
+
+            }
+
+
+
+
+            function onCurrentLineChanged(){
+
+
+
+                console.log(
+                    "UI LYRIC:",
+                    Lyrics.currentLine
+                )
+
+            }
+
+
+        }
+
+
+        Timer {
+
+            id:fadeTimer
+
+            interval:50
+
+
+            onTriggered:{
+
+                currentLyric.opacity=1
+
+            }
+
+        }
+    }
+
+    // =====================================================
+    // CONTROL BUTTONS
+    // =====================================================
+
+
+    Item {
+
+        id: controlWidget
+
+
+        width:240
+        height:50
+
+
+        // chỉ chỉnh 2 dòng này
+        x:315
+        y:170
+
+
+
+        RowLayout {
+
+            anchors.centerIn: parent
+
+
+            spacing:12
+
+
+
+            // SHUFFLE
+            Item {
+
+                width:36
+                height:36
+
+
+                Text {
+
+                    anchors.centerIn:parent
+
+                    text:"⇄"
+
+                    font.pixelSize:18
+
+                    color:"white"
+
+                }
+
+
+                MouseArea {
+
+                    anchors.fill:parent
+
+                    onClicked:
+                    Players.toggleShuffle()
+
+                }
+
+            }
+
+
+
+            // PREVIOUS
+            Item {
+
+                width:36
+                height:36
+
+
+                Text {
+
+                    anchors.centerIn:parent
+
+                    text:"⏮"
+
+                    color:"white"
+
+                }
+
+
+                MouseArea {
+
+                    anchors.fill:parent
+
+                    onClicked:
+
+                    if(root.player)
+                        root.player.previous()
+
+                }
+
+            }
+
+
+
+            // PLAY
+            Item {
+
+                width:40
+                height:40
+
+
+                Text {
+
+                    anchors.centerIn:parent
+
+
+                    text:
+                    Players.isPlaying
+                    ?
+                    "⏸"
+                    :
+                    "▶"
+
+
+                    font.pixelSize:20
+
+                    color:"white"
+
+                }
+
+
+                MouseArea {
+
+                    anchors.fill:parent
+
+
+                    onClicked:
+
+                    if(root.player)
+                        root.player.togglePlaying()
+
+                }
+
+            }
+
+
+
+            // NEXT
+            Item {
+
+                width:36
+                height:36
+
+
+                Text {
+
+                    anchors.centerIn:parent
+
+                    text:"⏭"
+
+                    color:"white"
+
+                }
+
+
+                MouseArea {
+
+                    anchors.fill:parent
+
+
+                    onClicked:
+
+                    if(root.player)
+                        root.player.next()
+
+                }
+
+            }
+
+
+
+            // LOOP
+            Item {
+
+                width:36
+                height:36
+
+
+                Text {
+
+                    id:loopBtn
+
+                    anchors.centerIn:parent
+
+
+                    text:"↻"
+
+
+                    font.pixelSize:18
+
+                    font.bold:true
+
+
+
+                    readonly property int mode: {
+
+                        if(!root.player)
+                            return 0
+
+
+                            let id =
+                            String(root.player.identity || "")
+                            .toLowerCase()
+
+
+
+                            if(id.includes("tauon"))
+                                return Players.tauonLoopState
+
+
+                                return root.player.loopStatus
+
+                    }
+
+
+
+                    color:
+
+                    mode > 0
+
+                    ?
+
+                    "#ff006a"
+
+                    :
+
+                    "white"
+
+
+
+                    opacity:
+
+                    mode > 0
+
+                    ?
+
+                    1
+
+                    :
+
+                    0.45
+
+
+
+
+                    Text {
+
+
+                        anchors.left:
+                        parent.right
+
+
+                        anchors.leftMargin:-3
+
+
+                        anchors.bottom:
+                        parent.bottom
+
+
+                        anchors.bottomMargin:-3
+
+
+
+                        text:
+
+                        loopBtn.mode === 1
+
+                        ?
+
+                        "1"
+
+                        :
+
+                        loopBtn.mode === 2
+
+                        ?
+
+                        "•"
+
+                        :
+
+                        ""
+
+
+
+                        font.pixelSize:
+
+                        loopBtn.mode === 1
+
+                        ?
+
+                        9
+
+                        :
+
+                        14
+
+
+
+                        font.bold:true
+
+
+                        color:"#ff006a"
+
+
+                    }
+
+
+                }
+
+
+
+                MouseArea {
+
+                    anchors.fill:parent
+
+
+                    onClicked:
+
+                    Players.forceToggleLoop()
+
+                }
+
+            }
+
+            Item {
+
+
+                width:36
+                height:36
+
+                Item {
+
+                    width:36
+                    height:36
+
+
+                    Text {
+
+                        anchors.centerIn:parent
+
+                        text:"⚙"
+
+                        color:"white"
+
+                        font.pixelSize:18
+
+                    }
+
+
+                    MouseArea {
+
+                        anchors.fill:parent
+
+
+                        onClicked:{
+
+
+                            console.log("OPEN LYRICS SETTINGS")
+
+
+                            toggleLyricsSettings()
+
+
+                        }
+
+                    }
+
+                }
+
+            }
+        }
+    }
+
+    // ========================================================
+    // ALBUM + CAVA
+    // ========================================================
+
+
+    Item {
+
+
+        id:radialAndummidk
+
+
+
+        width:250
+
+        height:40
+
+
+
+
+        // CHỈ SỬA 2 DÒNG NÀY
+
+        x:-15
+
+        y:95
+
+
+
+
+
+
+        Item {
+
+
+            id:radialCavaContainer
+
+
+            anchors.centerIn:parent
+
+
+            width:110
+
+            height:110
+
+
+
+
+
+            Repeater {
+
+
+                model:
+                root.bars.length
+
+
+
+                Item {
+
+
+                    anchors.fill:parent
+
+
+
+                    rotation:
+                    index*(360/48)
+
+
+
+                    Rectangle {
+
+
+                        anchors.bottom:
+                        parent.top
+
+
+                        anchors.horizontalCenter:
+                        parent.horizontalCenter
+
+
+                        anchors.bottomMargin:2
+
+
+
+                        width:2
+
+
+
+                        height:
+
+                        Math.min(
+
+                            50,
+
+                            Math.max(
+
+                                4,
+
+                                root.smoothHeights[index]*1
+
+                            )
+
+                        )
+
+
+
+                        radius:2
+
+
+
+                        color:
+
+                        index%2===0
+
+                        ?
+
+                        "#ff006a"
+
+                        :
+
+                        "#F5C2E7"
+
+                    }
+
+                }
+
+            }
+
+        }
+
+
+
+
+
+        Rectangle {
+
+
+            id:albumBorderCircle
+
+
+
+            anchors.centerIn:parent
+
+
+
+            width:110
+
+            height:110
+
+
+
+            radius:55
+
+
+
+            color:"#1a1625"
+
+
+
+            border.width:2
+
+            border.color:"#ff006a"
+
+
+
+            z:2
+
+
+
+
+
+            Item {
+
+
+                anchors.fill:parent
+
+
+                rotation:
+                root.discAngle
+
+
+
+
+
+                Image {
+
+
+                    id:albumArtSource
+
+
+
+                    anchors.fill:parent
+
+
+
+                    anchors.margins:3
+
+
+
+                    source:
+
+                    root.player
+
+                    ?
+
+                    Players.getArtUrl(root.player)
+
+                    :
+
+                    ""
+
+
+
+                    fillMode:
+                    Image.PreserveAspectCrop
+
+
+
+                    visible:false
+
+                }
+
+
+
+
+
+                Rectangle {
+
+
+                    id:maskCircle
+
+
+
+                    anchors.fill:parent
+
+
+
+                    anchors.margins:3
+
+
+
+                    radius:
+                    width/2
+
+
+
+                    visible:false
+
+                }
+
+
+
+
+
+                OpacityMask {
+
+
+                    anchors.fill:parent
+
+
+
+                    anchors.margins:3
+
+
+
+                    source:
+                    albumArtSource
+
+
+
+                    maskSource:
+                    maskCircle
+
+
+
+                    visible:
+                    albumArtSource.status
+                    === Image.Ready
+
+                }
+
+
+
+
+
+                Text {
+
+
+                    anchors.centerIn:parent
+
+
+
+                    text:"🎵"
+
+
+
+                    font.pixelSize:32
+
+
+
+                    color:"#F5C2E7"
+
+
+
+                    visible:
+                    albumArtSource.status
+                    !==Image.Ready
+
+                }
+
+            }
+
+        }
+
+    }
+
+
+
+    //
+    // ===============================
+    // FLOATING PROGRESS BAR
+    // ĐỂ NGOÀI ROWLAYOUT
+    // ===============================
+    //
+
+
+    Item {
+
+
+        id:progressWidget
+
+
+
+        width:300
+
+        height:40
+
+
+
+
+        // CHỈ SỬA 2 DÒNG NÀY
+
+        x:288
+
+        y:210
+
+
+
+
+
+
+        Rectangle {
+
+
+            id:progressTrack
+
+
+
+            width:
+            parent.width
+
+
+            height:4
+
+
+
+            radius:2
+
+
+
+            color:"#1d192b"
+
+
+
+
+            Rectangle{
+
+
+                id:progressFill
+
+
+
+                height:
+                parent.height
+
+
+
+                width:
+                parent.width *
+                root.progress
+
+
+
+                radius:2
+
+
+
+                color:"#ff006a"
+
+            }
+
+        }
+
+
+
+
+
+
+        MouseArea {
+
+
+            anchors.fill:
+            progressTrack
+
+
+
+            function seek(x){
+
+
+                if(root.player &&
+                    root.player.length>0){
+
+
+                    let value =
+
+                    Math.max(
+
+                        0,
+
+                        Math.min(
+
+                            1,
+
+                            x /
+                            progressTrack.width
+
+                        )
+
+                    )
+
+
+
+                    root.player.position =
+                    root.player.length *
+                    value
+
+
+                    }
+
+            }
+
+
+
+            onPressed:
+            seek(mouse.x)
+
+
+
+            onPositionChanged:{
+
+
+                if(pressed)
+                    seek(mouse.x)
+
+            }
+
+        }
+
+
+
+
+
+
+        Text {
+
+
+            anchors.top:
+            progressTrack.bottom
+
+
+
+            anchors.topMargin:6
+
+
+
+            anchors.left:
+            parent.left
+
+
+
+            text:
+
+            root.player
+
+            ?
+
+            root.formatTime(
+                root.player.position
+            )
+
+            :
+
+            "0:00"
+
+
+
+            color:"#ff006a"
+
+
+
+            font.pixelSize:10
+
+        }
+
+
+
+
+
+        Text {
+
+
+            anchors.top:
+            progressTrack.bottom
+
+
+
+            anchors.topMargin:6
+
+
+
+            anchors.right:
+            parent.right
+
+
+
+            text:
+
+            root.player
+
+            ?
+
+            root.formatTime(
+                root.player.length
+            )
+
+            :
+
+            "0:00"
+
+
+
+            color:"white"
+
+
+
+            opacity:0.5
+
+
+
+            font.pixelSize:10
+
+        }
+
+    }
+
+    // =====================================================
+    // LYRICS SETTINGS PANEL
+    // =====================================================
+
+
+
+    // ========================================================
+    // MAIN LAYOUT
+    // ========================================================
+
+
+    RowLayout {
+
+
+        anchors.fill: parent
+
+        anchors.margins:22
+
+        spacing:16
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // ========================================================
+        // INFO BLOCK
+        // ========================================================
+
+
         ColumnLayout {
-            id: middleInfoBlock
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 2
+
+
+            id:middleInfoBlock
+
+
+
+            Layout.fillWidth:true
+
+
+
+            Layout.preferredHeight:300
+
+            Layout.topMargin:1
+
+            Layout.rightMargin:-155
+
+
+
+            spacing:4
+
+
+
+
+
 
             ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-                Text { text: root.player ? root.player.trackTitle || "Unknown Track" : "No Music Playing"; font.pixelSize: 14; font.bold: true; color: "#ffffff"; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; elide: Text.ElideRight }
-                Text { text: root.player ? root.player.trackArtist || "Unknown Artist" : ""; font.pixelSize: 11; color: "#F5C2E7"; horizontalAlignment: Text.AlignHCenter; Layout.fillWidth: true; elide: Text.ElideRight }
+
+
+                Layout.fillWidth:true
+
+
+
+                spacing:2
+
+
+
+
+
+
+                Text {
+
+
+                    text:
+
+                    root.player
+
+                    ?
+
+                    root.player.trackTitle ||
+                    "Unknown Track"
+
+                    :
+
+                    "No Music Playing"
+
+
+
+
+                    font.pixelSize:14
+
+
+
+                    font.bold:true
+
+
+
+                    color:"white"
+
+
+
+                    horizontalAlignment:
+                    Text.AlignHCenter
+
+
+
+                    Layout.fillWidth:true
+
+
+
+                    elide:
+                    Text.ElideRight
+
+                }
+
+
+
+
+
+
+
+                Text {
+
+
+                    text:
+
+                    root.player
+
+                    ?
+
+                    root.player.trackArtist ||
+                    "Unknown Artist"
+
+                    :
+
+                    ""
+
+
+
+                    font.pixelSize:11
+
+
+
+                    color:"#F5C2E7"
+
+
+                    anchors.horizontalCenter:
+                    parent.horizontalCenter
+
+
+                    anchors.verticalCenter:
+                    parent.verticalCenter
+
+                    horizontalAlignment:
+                    Text.AlignHCenter
+
+
+                    verticalAlignment:
+                    Text.AlignVCenter
+
+                    Layout.topMargin:20
+
+                    Layout.preferredWidth:300
+
+
+
+                    elide:
+                    Text.ElideRight
+
+                }
+
             }
 
-            // Tạo khoảng trống mênh mông ở giữa để đẩy các chữ dạt lên thềm trên thoáng mắt
-            Item { Layout.fillWidth: true; Layout.fillHeight: true }
 
-            // THANH TIẾN TRÌNH PROGRESS BAR CẢM ỨNG CHUỘT THON GỌN PHẲNG MỊN
-            Rectangle {
-                id: progressBg
-                Layout.fillWidth: true; height: 10; color: "transparent"
+
+            // =====================================================
+            // PLAYER SELECTOR
+            // =====================================================
+
+
+            Item {
+
+
+                width:100
+
+                height:50
+
+
+
+
+
                 Rectangle {
-                    anchors.centerIn: parent; width: parent.width; height: 4; color: "#1d192b"; radius: 2
-                    Rectangle { id: progressBarFill; height: parent.height; color: "#ff006a"; radius: 2; width: Math.max(0, Math.floor(parent.width * root.progress)) }
-                }
-                MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    function seek(mx) { if (root.player && root.player.length > 0) root.player.position = Math.floor(root.player.length * (mx / progressBg.width)) }
-                    onPressed: (mouse) => seek(mouse.x)
-                    onPositionChanged: (mouse) => { if (pressed) seek(mouse.x) }
-                }
-            }
 
-            RowLayout {
-                Layout.fillWidth: true
-                Text { text: root.player ? root.formatTime(root.player.position) : "0:00"; color: "#ff006a"; font.pixelSize: 10; font.bold: true }
-                Item { Layout.fillWidth: true }
-                Text { text: root.player ? root.formatTime(root.player.length) : "0:00"; color: "#ffffff"; font.pixelSize: 10; opacity: 0.5 }
-            }
 
-            // BỘ NÚT MIXER PHẲNG MẢNH TO RỘNG CHỐNG ẤN HỤT (VÙNG ĐỆM CLICK VÀNG 36x36)
-            RowLayout {
-                id: controlButtonsRow
-                Layout.alignment: Qt.AlignHCenter; spacing: 12
+                    width:110
 
-                // 1. SHUFFLE
-                Item {
-                    width: 36; height: 36; Layout.alignment: Qt.AlignVCenter
+                    height:22
+
+
+
+                    x:360
+
+                    y:-130
+
+
+
+                    radius:6
+
+
+
+                    color:"#3d1b32"
+
+
+
+                    border.width:1
+
+                    border.color:"#ff006a"
+
+
+
+
+
                     Text {
-                        text: "⇄"; font.pixelSize: 18; font.bold: true; anchors.centerIn: parent
-                        color: root.player && root.player.shuffle ? "#ff006a" : "#ffffff"; opacity: root.player && root.player.shuffle ? 1.0 : 0.4
-                        Text { text: "•"; font.pixelSize: 14; color: "#ff006a"; visible: root.player && root.player.shuffle; anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.bottom; anchors.topMargin: -6 }
+
+
+                        anchors.centerIn:parent
+
+
+
+                        text:
+                        root.getPlayerName()
+
+
+
+                        color:"white"
+
+
+
+                        font.pixelSize:9
+
                     }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { Players.toggleShuffle() } }
+
                 }
 
-                // 2. PREVIOUS
-                Item {
-                    width: 36; height: 36; Layout.alignment: Qt.AlignVCenter
-                    Text { text: "⏮"; font.pixelSize: 15; color: "white"; opacity: 0.8; anchors.centerIn: parent }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if(root.player) root.player.previous() }
-                }
-
-                // 3. PLAY/PAUSE
-                Item {
-                    width: 40; height: 40; Layout.alignment: Qt.AlignVCenter
-                    Text { text: Players.isPlaying ? "⏸" : "▶"; font.pixelSize: 20; color: "white"; anchors.centerIn: parent }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if(root.player) root.player.togglePlaying() }
-                }
-
-                // 4. NEXT
-                Item {
-                    width: 36; height: 36; Layout.alignment: Qt.AlignVCenter
-                    Text { text: "⏭"; font.pixelSize: 15; color: "white"; opacity: 0.8; anchors.centerIn: parent }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if(root.player) root.player.next() }
-                }
-
-                // 5. LOOP
-                Item {
-                    width: 36; height: 36; Layout.alignment: Qt.AlignVCenter
-                    Text {
-                        id: loopBtn; text: "↻"; font.pixelSize: 16; font.bold: true; anchors.centerIn: parent
-                        readonly property int mode: {
-                            if (!root.player) return 0;
-                            let isTauon = String(root.player.identity).toLowerCase().includes("tauon");
-                            return isTauon ? Players.tauonLoopState : root.player.loopStatus;
-                        }
-                        color: mode > 0 ? "#ff006a" : "#ffffff"; opacity: mode > 0 ? 1.0 : 0.4
-                        Text {
-                            text: loopBtn.mode === 1 ? "1" : (loopBtn.mode === 2 ? "•" : "")
-                            font.pixelSize: loopBtn.mode === 1 ? 8 : 14; font.bold: true; color: "#ff006a"
-                            anchors.left: parent.right; anchors.leftMargin: -2; anchors.bottom: parent.bottom; anchors.bottomMargin: -2
-                        }
-                    }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { Players.forceToggleLoop() } }
-                }
             }
 
-            // BỘ CHỌN NGUỒN PHÁT HỆ THỐNG
-            RowLayout {
-                Layout.alignment: Qt.AlignHCenter; Layout.topMargin: 2
-                Rectangle {
-                    width: 110; height: 22; radius: 6; color: "#3d1b32"; border.width: 1; border.color: "#ff006a"
-                    RowLayout {
-                        anchors.centerIn: parent; spacing: 4
-                        Text { text: "🎵"; font.pixelSize: 9; color: "#F5C2E7" }
-                        Text { text: root.getPlayerName(); font.pixelSize: 9; font.bold: true; color: "white" }
-                        Text { text: "▼"; font.pixelSize: 6; color: "#ff006a" }
-                    }
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            let allPlayers = Mpris.players.values;
-                            if (allPlayers && allPlayers.length > 1) {
-                                let currentIdx = 0;
-                                for (let i = 0; i < allPlayers.length; i++) { if (allPlayers[i].busName === root.player.busName) { currentIdx = i; break; } }
-                                Players.active = allPlayers[(currentIdx + 1) % allPlayers.length];
-                            }
-                        }
-                    }
-                }
-            }
+
         }
 
-        // ================= KHỐI 3: KHUNG CHỨA ẢNH GIF 5TOCGJ DẠT PHẢI =================
-        Item {
-            Layout.preferredWidth: 200; Layout.preferredHeight: 160; Layout.alignment: Qt.AlignVCenter
-            AnimatedImage { id: customDashboardGif; anchors.fill: parent; source: "file:///home/alone/Documents/logos/5tocgj.gif"; fillMode: Image.PreserveAspectFit; playing: Players.isPlaying; visible: status === AnimatedImage.Ready || status === AnimatedImage.Loading }
-            Text { anchors.centerIn: parent; text: "🎵"; font.pixelSize: 28; color: "#F5C2E7"; visible: customDashboardGif.status === AnimatedImage.Error }
-        }
     }
 }
