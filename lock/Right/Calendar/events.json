@@ -1,0 +1,19 @@
+[
+    {
+        "id":1,
+        "date":"2026-07-20",
+        "title":"Birthday",
+        "time":"20:00",
+        "type":"personal",
+        "description":"Birthday party"
+    },
+
+    {
+        "id":2,
+        "date":"2026-07-25",
+        "title":"Project Meeting",
+        "time":"09:30",
+        "type":"work",
+        "description":"Discuss project"
+    }
+]

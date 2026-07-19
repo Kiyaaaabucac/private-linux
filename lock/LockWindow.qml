@@ -1,178 +1,88 @@
 import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 
+import "../../common"
 import "../../services"
-import "./components/"
+import "./components/" // ÉP QUÉ TẬN GỐC: Nạp toàn bộ các file nằm trong thư mục components
 
+Scope {
+    id: lockWindowScope
 
+    Variants {
+        model: Quickshell.screens
 
-PanelWindow {
+        PanelWindow {
+            id: root
 
+            required property var modelData
+            screen: modelData
 
-    id:root
+            visible: LockState.locked
+            color: "transparent"
 
+            WlrLayershell.namespace: "lockscreen"
+            WlrLayershell.layer: WlrLayer.Overlay
 
+            WlrLayershell.exclusiveZone: -1
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-    // =========================
-    // LOCK STATE
-    // =========================
+            anchors {
+                top: true
+                bottom: true
+                left: true
+                right: true
+            }
 
-    visible: LockState.locked
+            onVisibleChanged: {
+                console.log("[LOCK WINDOW] Screen: " + (screen ? screen.name : "N/A") + " | Seen: " + visible)
+                if (visible) {
+                    keyboardBridge.forceActiveFocus()
+                }
+            }
 
+            Connections {
+                target: LockState
+                ignoreUnknownSignals: true
+                function onLockedChanged() {
+                    root.visible = LockState.locked
+                    if (root.visible) {
+                        keyboardBridge.forceActiveFocus()
+                    }
+                }
+            }
 
+            // Gọi trực tiếp, Quickshell tự động bốc file từ thư mục components/ đã import ở dòng 13
+            LockBackground {
+                anchors.fill: parent
+                z: -1
+            }
 
-    screen: Quickshell.screens.length > 0
-    ?
-    Quickshell.screens[0]
-    :
-    null
+            LockContent {
+                id: lockContent
+                anchors.fill: parent
+                z: 1
+            }
 
+            Item {
+                id: keyboardBridge
+                anchors.fill: parent
+                focus: true
 
-
-
-    // =========================
-    // FULLSCREEN
-    // =========================
-
-
-    anchors {
-
-        top:true
-
-        bottom:true
-
-        left:true
-
-        right:true
-
-    }
-
-
-
-
-    exclusionMode:
-
-    ExclusionMode.Ignore
-
-
-
-
-    color:"transparent"
-
-
-
-
-    // =========================
-    // DEBUG
-    // =========================
-
-
-    onVisibleChanged:
-    {
-
-        console.log(
-            "LOCK WINDOW:",
-            visible
-        )
-
-
-    }
-
-
-
-
-
-
-    Connections {
-
-
-        target:LockState
-
-
-
-        function onLockedChanged()
-        {
-
-            console.log(
-                "LOCK STATE CHANGED:",
-                LockState.locked
-            )
-
+                Keys.onPressed: (event) => {
+                    if (typeof lockContent.findChildPam === "function") {
+                        let pamWidget = lockContent.findChildPam()
+                        if (pamWidget) {
+                            pamWidget.handleKeyInput(event)
+                        }
+                    }
+                }
+            }
         }
-
-
     }
-
-
-
-
-
-
-
-    // =========================
-    // BACKGROUND
-    // =========================
-
-    LockBackground {
-
-        anchors.fill:parent
-
-    }
-
-
-
-    // =========================
-    // CONTENT
-    // =========================
-
-    LockContent {
-
-        anchors.fill:parent
-
-    }
-
-
-
-
-    // =========================
-    // ESC CLOSE TEST
-    // =========================
-
-
-    Item {
-
-        anchors.fill:parent
-
-        focus:true
-
-        z:100
-
-
-
-        Keys.onEscapePressed:
-        {
-
-            console.log(
-                "ESC CLOSE LOCK"
-            )
-
-
-            LockState.close()
-
-        }
-
-
-
-        Component.onCompleted:
-        {
-
-            forceActiveFocus()
-
-        }
-
-    }
-
-
-
 }
