@@ -2,12 +2,20 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell.Services.Notifications
+import "../../../services"
+
 
 Item {
     id: notifRoot
 
     implicitWidth: 340
     implicitHeight: 400
+
+    property color albumPrimary: AlbumColors.primary
+    property color textPrimary: Qt.lighter(albumPrimary, 3.0)
+    property color accentLight: Qt.lighter(albumPrimary, 1.5)
+    Behavior on albumPrimary { ColorAnimation { duration: 500 } }
+
 
     // BỆ ĐỠ TỔNG: Hộp kính mờ phẳng lỳ đen bóng đêm 45%
     Rectangle {
@@ -35,7 +43,7 @@ Item {
 
                 Text {
                     text: localNotifModel.count + " NOTIFICATIONS"
-                    color: localNotifModel.count > 0 ? "#F5C2E7" : "#A6ADC8"
+                    color: localNotifModel.count > 0 ? notifRoot.textPrimary : "#A6ADC8"
                     font.pixelSize: 11
                     font.bold: true
                     opacity: localNotifModel.count > 0 ? 0.9 : 0.5
@@ -51,17 +59,18 @@ Item {
                     Layout.preferredWidth: 90
                     Layout.preferredHeight: 24
                     radius: 8
-                    color: clearAllMouse.containsMouse ? Qt.rgba(255/255, 0, 106/255, 0.15) : "transparent"
+                    color: clearAllMouse.containsMouse ? Qt.rgba(AlbumColors.primary.r, AlbumColors.primary.g, AlbumColors.primary.b, 0.15) : "transparent"
                     border.width: 1
-                    border.color: clearAllMouse.containsMouse ? "#ff006a" : Qt.rgba(1, 1, 1, 0.1)
-                    visible: localNotifModel.count > 0
+
+                    // 🌟 SỬA LỖI CHÍ MẠNG: Điền lại thuộc tính border.color: bị mất ở đây!
+                    border.color: clearAllMouse.containsMouse ? notifRoot.textPrimary : Qt.rgba(1, 1, 1, 0.1)
 
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     Text {
                         anchors.centerIn: parent
                         text: "CLEAR ALL"
-                        color: clearAllMouse.containsMouse ? "white" : "#ff006a"
+                        color: clearAllMouse.containsMouse ? "white" : notifRoot.textPrimary
                         font.pixelSize: 9
                         font.bold: true
                         font.family: "JetBrains Mono"
@@ -123,7 +132,7 @@ Item {
                     radius: 14
                     color: Qt.rgba(255/255, 255/255, 255/255, 0.04)
                     border.width: 1
-                    border.color: itemMouse.containsMouse ? Qt.rgba(255/255, 0, 106/255, 0.25) : Qt.rgba(1, 1, 1, 0.06)
+                    border.color: itemMouse.containsMouse ? notifRoot.accentLight : Qt.rgba(1,1,1,0.06)
 
                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -137,7 +146,7 @@ Item {
                             width: 3
                             Layout.fillHeight: true
                             radius: 1.5
-                            color: "#ff006a"
+                            color: notifRoot.accentLight
                         }
 
                         // =========================================================================
@@ -173,7 +182,7 @@ Item {
                         // Tên ứng dụng viết Hoa đậm đà thương hiệu
                         Text {
                             text: model.appName
-                            color: "#ff006a"
+                            color: notifRoot.accentLight
                             font.pixelSize: 10
                             font.bold: true
                             font.family: "JetBrains Mono"
@@ -233,7 +242,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: "×"
-                                color: dismissMouse.containsMouse ? "#ff006a" : "#A6ADC8"
+                                color: dismissMouse.containsMouse ? notifRoot.textPrimary : "#A6ADC8"
                                 font.pixelSize: 14
                                 font.bold: true
                                 // Vùng rình chuột cho toàn bộ tấm thẻ thông báo con
