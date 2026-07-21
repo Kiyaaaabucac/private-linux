@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
+import "../../../services"
 
 Item {
     id: root
@@ -14,6 +15,12 @@ Item {
 
     // Biến khóa an toàn cô lập trạng thái tương tác kéo trượt của bro
     property bool isUserInteracting: false
+
+    property color albumPrimary: AlbumColors.primary
+    property color textPrimary: Qt.lighter(albumPrimary, 3.0)
+    property color accentLight: Qt.lighter(albumPrimary, 1.5)
+    Behavior on albumPrimary { ColorAnimation { duration: 500 } }
+
 
     // 1. TIẾN TRÌNH CÀO ÂM LƯỢNG HỆ THỐNG
     Process {
@@ -97,8 +104,31 @@ Item {
         ColumnLayout {
             Layout.fillHeight: true; spacing: 6; Layout.alignment: Qt.AlignHCenter
             Rectangle {
-                id: vBarBg; width: 14; Layout.fillHeight: true; radius: 7; color: "#110c14"; border.width: 1; border.color: "#3d1b32"
-                Rectangle { id: vFill; anchors.bottom: parent.bottom; width: parent.width; radius: parent.radius; color: "#ff006a"; height: parent.height * (root.volumeVal / 100); Behavior on height { NumberAnimation { duration: 100 } } }
+                id: vBarBg; width: 14; Layout.fillHeight: true; radius: 7
+
+                // 🌟 SYNC MÀU NỀN Slider LÓT TRẦM TOÁN HỌC (Tương phản cao)
+                color: Qt.darker(root.accentLight, 3.2)
+                border.width: 1
+                border.color: Qt.darker(root.accentLight, 2.0)
+
+                Rectangle {
+                    id: vFill;
+                    anchors.bottom: parent.bottom;
+                    width: parent.width;
+                    radius: parent.radius;
+
+                    // 🎯 ĐÃ ĐỔI SANG GRADIENT DỌC: Loang màu rực rỡ từ ngọn xuống chân thanh trượt
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: root.textPrimary }
+                        GradientStop { position: 1.0; color: root.accentLight }
+                    }
+
+                    opacity: 0.95
+                    height: parent.height * (root.volumeVal / 100);
+                    Behavior on height { NumberAnimation { duration: 100 } }
+                }
+
                 MouseArea {
                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     onPressed: (mouse) => { root.isUserInteracting = true; updateVolume(mouse.y); }
@@ -112,7 +142,16 @@ Item {
                     }
                 }
             }
-            Text { Layout.alignment: Qt.AlignHCenter; text: "🔊"; font.pixelSize: 12; color: "#F5C2E7" }
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter;
+                text: "🔊";
+                font.pixelSize: 12;
+
+                // 🌟 SYNC MÀU BIỂU TƯỢNG ICON
+                color: root.accentLight
+            }
+
             Text { Layout.alignment: Qt.AlignHCenter; text: root.volumeVal + "%"; color: "white"; font.pixelSize: 8; opacity: 0.5 }
         }
 
@@ -127,15 +166,25 @@ Item {
                 width: 14
                 Layout.fillHeight: true
                 radius: 7
-                color: "#110c14"
+
+                // 🌟 SYNC MÀU NỀN Slider LÓT TRẦM TOÁN HỌC (Đồng bộ sâu sắc với dải CAVA)
+                color: Qt.darker(root.accentLight, 3.2)
                 border.width: 1
-                border.color: "#3d1b32"
+                border.color: Qt.darker(root.accentLight, 2.0)
 
                 Rectangle {
                     anchors.bottom: parent.bottom
                     width: parent.width
                     radius: parent.radius
-                    color: "#F5C2E7"
+
+                    // 🎯 ĐÃ ĐỔI SANG GRADIENT DỌC: Vuốt màu từ chân lên đỉnh thanh trượt rực rỡ
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: root.textPrimary }
+                        GradientStop { position: 1.0; color: root.accentLight }
+                    }
+
+                    opacity: 0.95
                     height: parent.height * (root.brightnessVal / 100)
                     Behavior on height { NumberAnimation { duration: 80 } }
                 }
@@ -158,7 +207,6 @@ Item {
                     }
 
                     // 🎯 KHÔI PHỤC QUYẾT ĐỊNH: Thả tay ra gọi trực tiếp lệnh brightnessctl thô của hệ thống
-                    // Trả lại luồng chạy mượt mà, ăn lệnh tăng giảm ánh sáng màn hình laptop Vostro lập tức 100%!
                     onReleased: (mouse) => {
                         cooldownTimer.start();
                         root.isUserInteracting = false;
@@ -174,7 +222,15 @@ Item {
                 }
             }
 
-            Text { Layout.alignment: Qt.AlignHCenter; text: "☀️"; font.pixelSize: 12; color: "#F5C2E7" }
+            Text {
+                Layout.alignment: Qt.AlignHCenter;
+                text: "☀️";
+                font.pixelSize: 12;
+
+                // 🌟 SYNC MÀU BIỂU TƯỢNG ICON
+                color: root.accentLight
+            }
+
             Text { Layout.alignment: Qt.AlignHCenter; text: root.brightnessVal + "%"; color: "white"; font.pixelSize: 8; opacity: 0.5 }
         }
 
@@ -182,11 +238,42 @@ Item {
         ColumnLayout {
             Layout.fillHeight: true; spacing: 6; Layout.alignment: Qt.AlignHCenter
             Rectangle {
-                id: batBarBg; width: 12; Layout.fillHeight: true; radius: 6; color: "#110c14"; border.width: 1; border.color: "#3d1b32"
-                Rectangle { anchors.bottom: parent.bottom; width: parent.width; radius: parent.radius; color: "#ff006a"; height: parent.height * (root.batteryVal / 100); Behavior on height { NumberAnimation { duration: 200 } } }
+                id: batBarBg; width: 12; Layout.fillHeight: true; radius: 6
+
+                // 🌟 SYNC MÀU NỀN Slider LÓT TRẦM TOÁN HỌC (Tương phản cao sâu thẳm)
+                color: Qt.darker(root.accentLight, 3.2)
+                border.width: 1
+                border.color: Qt.darker(root.accentLight, 2.0)
+
+                Rectangle {
+                    anchors.bottom: parent.bottom;
+                    width: parent.width;
+                    radius: parent.radius;
+
+                    // 🎯 ĐÃ ĐỔI SANG GRADIENT DỌC: Vuốt dải loang màu động rực rỡ kịch trần trùng khớp với CAVA
+                    gradient: Gradient {
+                        orientation: Gradient.Vertical
+                        GradientStop { position: 0.0; color: root.textPrimary }
+                        GradientStop { position: 1.0; color: root.accentLight }
+                    }
+
+                    opacity: 0.95
+                    height: parent.height * (root.batteryVal / 100);
+                    Behavior on height { NumberAnimation { duration: 200 } }
+                }
             }
-            Text { Layout.alignment: Qt.AlignHCenter; text: "🔋"; font.pixelSize: 12; color: "#F5C2E7" }
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter;
+                text: "🔋";
+                font.pixelSize: 12;
+
+                // 🌟 SYNC MÀU BIỂU TƯỢNG ICON PIN
+                color: root.accentLight
+            }
+
             Text { Layout.alignment: Qt.AlignHCenter; text: root.batteryVal + "%"; color: "white"; font.pixelSize: 8; opacity: 0.5 }
         }
+
     }
 }
