@@ -37,6 +37,33 @@ Item {
     property string displayLyrics:""
     property bool lyricsSettingsOpen:false
 
+    // =========================================================================
+    // 🧠 BỘ LỌC ĐA SẮC ĐỘNG NÂNG CAO (CHỐNG LỖI CHUYỂN MÀU ĐEN TUYỀN)
+    // =========================================================================
+    property color albumPrimary: AlbumColors.primary
+    property color albumSecondary: AlbumColors.secondary
+
+    property color textPrimary: Qt.lighter(albumPrimary, 3.0)  // Kích sáng hệ 3 cho chữ tiêu đề
+    property color accentLight: Qt.lighter(albumPrimary, 1.5)  // Màu sắc nghệ thuật cho các nút bấm
+
+    // 🌟 GIẢI PHÁP CHÍ MẠNG: Thêm hàm bẫy lỗi kiểm tra mã màu hợp lệ cho thuộc tính textSecondary!
+    // Nếu biến albumSecondary hợp lệ và không phải màu đen thô, tiến hành kích sáng 2.2 lần.
+    // Ngược lại, ép trả về màu trắng xám khói (#cbc7ca) chuẩn để chống sập màu đen tuyền!
+    property color textSecondary: {
+        try {
+            // Kiểm tra nếu mã màu hợp lệ (không rỗng, không phải màu đen chết)
+            if (albumSecondary && String(albumSecondary) !== "#000000" && String(albumSecondary) !== "transparent") {
+                return Qt.lighter(albumSecondary, 2.2);
+            }
+        } catch(e) {}
+        return "#cbc7ca"; // Màu trắng xám khói mumei dự phòng siêu đẹp, siêu sáng rõ
+    }
+
+    // Hoạt họa chuyển đổi màu sắc mềm mại trong 500ms giữa các bài hát
+    Behavior on albumPrimary { ColorAnimation { duration: 500 } }
+    Behavior on albumSecondary { ColorAnimation { duration: 500 } }
+
+
     Component.onCompleted:{
 
 
@@ -400,533 +427,167 @@ Item {
 
     }
 
-    // =====================================================
-    // Lyrics
-    // =====================================================
-
+    // =====================================================================
+    // Lyrics (ĐỒNG BỘ MÀU STATE ĐIỆN ẢNH - ĐÃ VÁ LỖI CẤU TRÚC NGOẶC NHỌN)
+    // =====================================================================
     Item {
-
-
-
-        id:lyricsWidget
-
-        width:500
-        height:160
-
-
-        x:195
-        y:83
-
-
+        id: lyricsWidget
+        width: 500
+        height: 160
+        x: 195
+        y: 83
 
         Rectangle {
-
-            id:lyrics
-
-            anchors.fill:parent
-
-            radius:16
-
-            color:"#3d1b32"
-
-            opacity:0
-
+            id: lyrics
+            anchors.fill: parent
+            radius: 16
+            color: "#3d1b32"
+            opacity: 0
         }
 
-
-
-
-
         Item {
-
-            id:lyricsBox
-
-            anchors.fill:parent
-
-            clip:true
-
-
-
+            id: lyricsBox
+            anchors.fill: parent
+            clip: true
 
             Column {
-
-                id:lyricColumn
-
-
-                width:parent.width
-
-
-                spacing:8
-
-
-                y:0
-
-
+                id: lyricColumn
+                width: parent.width
+                spacing: 8
+                y: 0
 
                 Behavior on y {
-
                     NumberAnimation {
-
-                        duration:450
-
-                        easing.type:Easing.OutCubic
-
+                        duration: 450
+                        easing.type: Easing.OutCubic
                     }
-
                 }
-
-
-
-
-
 
                 // =========================
                 // PREVIOUS
                 // =========================
-
-
                 Text {
-
-
-                    id:previousLyric
-
-
-                    width:parent.width
-
-
-
-                    text:
-
-                    Lyrics.displayedIndex > 0
-
-                    ?
-
-                    Lyrics.lyricLines[
-                        Lyrics.displayedIndex-1
-                    ].text
-
-                    :
-
-                    ""
-
-
-
-                    horizontalAlignment:
-                    Text.AlignHCenter
-
-
-
-                    wrapMode:
-                    Text.Wrap
-
-
-
-                    color:"#F5C2E7"
-
-
-                    opacity:0.35
-
-
-
-                    font.pixelSize:11
-
-
-
+                    id: previousLyric
+                    width: parent.width
+                    text: Lyrics.displayedIndex > 0 ? Lyrics.lyricLines[Lyrics.displayedIndex - 1].text : ""
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                    color: root.textSecondary
+                    opacity: 0.35
+                    font.pixelSize: 11
                 }
-
-
-
-
-
-
-
 
                 Rectangle {
-
-                    width:220
-
-                    height:1
-
-
-                    anchors.horizontalCenter:
-                    parent.horizontalCenter
-
-
-
-                    color:"#ff006a"
-
-
-                    opacity:0.5
-
+                    width: 220
+                    height: 1
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: root.accentLight
+                    opacity: 0.3
                 }
-
-
-
-
-
-
 
                 // =========================
                 // CURRENT KARAOKE
                 // =========================
-
                 Item {
-
                     id: currentLyric
-
                     width: parent.width
-                    height:45
-
-
-                    property string currentText:
-                    Lyrics.currentLine
-
-
+                    height: 45
+                    property string currentText: Lyrics.currentLine
 
                     Text {
-
-                        id:baseText
-
-                        height:30
-
-                        width:Math.min(
-                            implicitWidth,
-                            490
-                        )
-
-                        maximumLineCount:1
-
-                        elide:Text.ElideRight
-
-
-                        anchors.horizontalCenter:
-                        parent.horizontalCenter
-
-
-                        anchors.verticalCenter:
-                        parent.verticalCenter
-
-
-
-                        text:
-                        currentLyric.currentText
-
-
-
-                        color:"#555"
-
-
-
-                        horizontalAlignment:
-                        Text.AlignHCenter
-
-
-                        verticalAlignment:
-                        Text.AlignVCenter
-
-
-
-                        font.pixelSize:11
-
-                        font.bold:true
-
-
+                        id: baseText
+                        height: 30
+                        width: Math.min(implicitWidth, 490)
+                        maximumLineCount: 1
+                        elide: Text.ElideRight
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: currentLyric.currentText
+                        color: "#555"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 18
+                        font.bold: true
                     }
-
-
 
                     Item {
-
-                        id:karoMask
-
-
-                        anchors.left:
-                        baseText.left
-
-
-                        anchors.top:
-                        baseText.top
-
-
-
-                        width:
-
-                        baseText.width *
-                        Lyrics.lineProgress
-
-
-
-                        height:
-                        baseText.height
-
-
-
-                        clip:true
-
-
+                        id: karoMask
+                        anchors.left: baseText.left
+                        anchors.top: baseText.top
+                        width: baseText.width * Lyrics.lineProgress
+                        height: baseText.height
+                        clip: true
 
                         Text {
-
-                            id:karoText
-
-
-                            width:
-                            baseText.width
-
-
-                            height:
-                            baseText.height
-
-
-
-                            text:
-                            currentLyric.currentText
-
-
-
-                            color:"#ff006a"
-
-
-
-                            horizontalAlignment:
-                            Text.AlignHCenter
-
-
-                            verticalAlignment:
-                            Text.AlignVCenter
-
-
-
-                            font.pixelSize:11
-
-                            font.bold:true
-
-                            layer.enabled:true
-
-
-                            layer.effect:
-
-                            DropShadow {
-
-
-                                radius:8
-
-
-                                samples:16
-
-
-                                color:"#ff006a"
-
-
+                            id: karoText
+                            width: baseText.width
+                            height: baseText.height
+                            text: currentLyric.currentText
+                            color: root.textPrimary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font.pixelSize: 18
+                            font.bold: true
+                            layer.enabled: true
+                            layer.effect: DropShadow {
+                                radius: 8
+                                samples: 16
+                                color: root.accentLight
                             }
-
-
                         }
-
-
                     }
 
-
-
-
-
-
-
-
-                    scale:1
-
-
-
-                    Behavior on scale {
-
-
-                        NumberAnimation {
-
-
-                            duration:250
-
-
-                            easing.type:
-
-                            Easing.OutBack
-
-
-                        }
-
-                    }
-
-
-
-                    opacity:1
-
-
-                    Behavior on opacity {
-
-
-                        NumberAnimation {
-
-
-                            duration:250
-
-
-                        }
-
-                    }
-
-
+                    scale: 1
+                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    opacity: 1
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
                 }
-
-
-
-
-
-
-
-
 
                 Rectangle {
-
-                    width:220
-
-                    height:1
-
-
-                    anchors.horizontalCenter:
-                    parent.horizontalCenter
-
-
-                    color:"#ff006a"
-
-
-                    opacity:0.5
-
+                    width: 220
+                    height: 1
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: root.accentLight
+                    opacity: 0.3
                 }
-
-
-
-
-
-
-
 
                 // =========================
                 // NEXT
                 // =========================
-
-
                 Text {
-
-
-                    id:nextLyric
-
-
-
-                    width:parent.width
-
-
-
-
-                    text:
-
-
-                    Lyrics.displayedIndex + 1
-                    <
-                    Lyrics.lyricLines.length
-
-                    ?
-
-                    Lyrics.lyricLines[
-                        Lyrics.displayedIndex+1
-                    ].text
-
-                    :
-
-                    ""
-
-
-
-                    horizontalAlignment:
-
-                    Text.AlignHCenter
-
-
-
-                    wrapMode:
-
-                    Text.Wrap
-
-
-
-                    color:"#F5C2E7"
-
-
-                    opacity:0.35
-
-
-
-                    font.pixelSize:11
-
-
+                    id: nextLyric
+                    width: parent.width
+                    text: (Lyrics.displayedIndex + 1 < Lyrics.lyricLines.length) ? Lyrics.lyricLines[Lyrics.displayedIndex + 1].text : ""
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
+                    color: root.textSecondary
+                    opacity: 0.35
+                    font.pixelSize: 11
                 }
+            } // 🌟 ĐÃ VÁ: Đóng ngoặc nhọn của thẻ Column chuẩn xác!
 
-
-
-            }
-
-
-
-
-
-
-
-
-
-            // =========================
-            // SLIDE ANIMATION
-            // =========================
-
+            // =========================================================================
+            // ĐOẠN HOẠT HỌA TRƯỢT DÒNG CHỮ (SLIDE ANIMATION MATRIX)
+            // =========================================================================
             SequentialAnimation {
-
-                id:lyricFade
-
-
+                id: lyricFade
                 ParallelAnimation {
-
-
                     NumberAnimation {
-
-                        target:currentLyric
-
-                        property:"opacity"
-
-                        from:0.5
-
-                        to:1
-
-                        duration:150
-
+                        target: currentLyric
+                        property: "opacity"
+                        from: 0.5
+                        to: 1
+                        duration: 150
                     }
-
-
-
                     NumberAnimation {
-
-                        target:currentLyric
-
-                        property:"scale"
-
-                        from:1.08
-
-                        to:1
-
-                        duration:250
-
-                        easing.type:Easing.OutBack
-
+                        target: currentLyric
+                        property: "scale"
+                        from: 1.08
+                        to: 1
+                        duration: 250
+                        easing.type: Easing.OutBack
                     }
-
                 }
-
             }
 
             NumberAnimation {
@@ -936,65 +597,30 @@ Item {
                 to: 0
                 duration: 180
             }
-
-        }
-
-
+        } // 🌟 ĐÃ VÁ: Đóng ngoặc nhọn của thẻ lyricsBox
 
         Connections {
-
-
-            target:Lyrics
-
-
-
-
-
+            target: Lyrics
+            ignoreUnknownSignals: true
             function onCurrentIndexChanged(){
-
-                Lyrics.displayedIndex =
-                Lyrics.currentIndex
-
-
-                currentLyric.scale=1.08
-
+                Lyrics.displayedIndex = Lyrics.currentIndex
+                currentLyric.scale = 1.08
                 lyricFade.restart()
-
             }
-
-
-
-
             function onCurrentLineChanged(){
-
-
-
-                console.log(
-                    "UI LYRIC:",
-                    Lyrics.currentLine
-                )
-
+                console.log("UI LYRIC:", Lyrics.currentLine)
             }
-
-
         }
-
 
         Timer {
-
-            id:fadeTimer
-
-            interval:50
-
-
-            onTriggered:{
-
-                currentLyric.opacity=1
-
+            id: fadeTimer
+            interval: 50
+            onTriggered: {
+                currentLyric.opacity = 1
             }
-
         }
     }
+
 
     // =====================================================
     // CONTROL BUTTONS
@@ -1025,349 +651,189 @@ Item {
 
 
 
-            // SHUFFLE
+            // SHUFFLE (TRỘN BÀI - HOVER ĐỔI MÀU STATE CHUẨN)
             Item {
-
-                width:36
-                height:36
-
+                width: 36
+                height: 36
 
                 Text {
+                    id: shuffleIcon
+                    anchors.centerIn: parent
+                    text: "⇄"
+                    font.pixelSize: 18
 
-                    anchors.centerIn:parent
-
-                    text:"⇄"
-
-                    font.pixelSize:18
-
-                    color:"white"
-
+                    // 🎨 BỔ SUNG HOVER: Di chuột vào icon trộn bài sẽ sáng bừng tone màu Album nhạc!
+                    color: mouseShuffle.containsMouse ? root.textPrimary : "white"
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
-
 
                 MouseArea {
+                    id: mouseShuffle
+                    anchors.fill: parent
+                    hoverEnabled: true // Bật nhận diện hover chuột
+                    onClicked: Players.toggleShuffle()
+                }
+            }
 
-                    anchors.fill:parent
+            // PREVIOUS (BÀI TRƯỚC - HOVER ĐỔI MÀU ACCENT)
+            Item {
+                width: 36
+                height: 36
 
-                    onClicked:
-                    Players.toggleShuffle()
+                Text {
+                    id: prevIcon
+                    anchors.centerIn: parent
+                    text: "⏮"
 
+                    // 🎨 BỔ SUNG HOVER: Di chuột vào sáng nhẹ tone Accent của Album
+                    color: mousePrev.containsMouse ? root.accentLight : "white"
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
 
+                MouseArea {
+                    id: mousePrev
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        if (root.player)
+                            root.player.previous()
+                    }
+                }
+            }
+
+            // PLAY/PAUSE (PHÁT/TẠM DỪNG - HOVER ĐỔI MÀU CHÍNH)
+            Item {
+                width: 40
+                height: 40
+
+                Text {
+                    id: playIcon
+                    anchors.centerIn: parent
+                    text: Players.isPlaying ? "⏸" : "▶"
+                    font.pixelSize: 20
+
+                    // 🎨 BỔ SUNG HOVER: Nút Play/Pause chính tâm rực sáng theo màu Album kích sáng rõ nét
+                    color: mousePlay.containsMouse ? root.textPrimary : "white"
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                }
+
+                MouseArea {
+                    id: mousePlay
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        if (root.player)
+                            root.player.togglePlaying()
+                    }
+                }
+            }
+
+            // NEXT (BÀI TIẾP THEO - HOVER ĐỔI MÀU ACCENT)
+            Item {
+                width: 36
+                height: 36
+
+                Text {
+                    id: nextIcon
+                    anchors.centerIn: parent
+                    text: "⏭"
+
+                    // 🎨 BỔ SUNG HOVER: Di chuột vào sáng nhẹ tone Accent của Album
+                    color: mouseNext.containsMouse ? root.accentLight : "white"
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                }
+
+                MouseArea {
+                    id: mouseNext
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        if (root.player)
+                            root.player.next()
+                    }
+                }
             }
 
 
 
-            // PREVIOUS
+
+            // LOOP (ĐỒNG BỘ MÀU STATE THEO ALBUM CHUẨN)
             Item {
-
-                width:36
-                height:36
-
+                width: 36
+                height: 36
 
                 Text {
-
-                    anchors.centerIn:parent
-
-                    text:"⏮"
-
-                    color:"white"
-
-                }
-
-
-                MouseArea {
-
-                    anchors.fill:parent
-
-                    onClicked:
-
-                    if(root.player)
-                        root.player.previous()
-
-                }
-
-            }
-
-
-
-            // PLAY
-            Item {
-
-                width:40
-                height:40
-
-
-                Text {
-
-                    anchors.centerIn:parent
-
-
-                    text:
-                    Players.isPlaying
-                    ?
-                    "⏸"
-                    :
-                    "▶"
-
-
-                    font.pixelSize:20
-
-                    color:"white"
-
-                }
-
-
-                MouseArea {
-
-                    anchors.fill:parent
-
-
-                    onClicked:
-
-                    if(root.player)
-                        root.player.togglePlaying()
-
-                }
-
-            }
-
-
-
-            // NEXT
-            Item {
-
-                width:36
-                height:36
-
-
-                Text {
-
-                    anchors.centerIn:parent
-
-                    text:"⏭"
-
-                    color:"white"
-
-                }
-
-
-                MouseArea {
-
-                    anchors.fill:parent
-
-
-                    onClicked:
-
-                    if(root.player)
-                        root.player.next()
-
-                }
-
-            }
-
-
-
-            // LOOP
-            Item {
-
-                width:36
-                height:36
-
-
-                Text {
-
-                    id:loopBtn
-
-                    anchors.centerIn:parent
-
-
-                    text:"↻"
-
-
-                    font.pixelSize:18
-
-                    font.bold:true
-
-
+                    id: loopBtn
+                    anchors.centerIn: parent
+                    text: "↻"
+                    font.pixelSize: 18
+                    font.bold: true
 
                     readonly property int mode: {
-
-                        if(!root.player)
-                            return 0
-
-
-                            let id =
-                            String(root.player.identity || "")
-                            .toLowerCase()
-
-
-
-                            if(id.includes("tauon"))
-                                return Players.tauonLoopState
-
-
+                        if(!root.player) return 0
+                            let id = String(root.player.identity || "").toLowerCase()
+                            if(id.includes("tauon")) return Players.tauonLoopState
                                 return root.player.loopStatus
-
                     }
 
-
-
-                    color:
-
-                    mode > 0
-
-                    ?
-
-                    "#ff006a"
-
-                    :
-
-                    "white"
-
-
-
-                    opacity:
-
-                    mode > 0
-
-                    ?
-
-                    1
-
-                    :
-
-                    0.45
-
-
-
+                    // 🎨 SYNC MÀU ICON: Khi bật ăn theo màu Album kích sáng rõ nét, khi tắt giữ màu trắng
+                    color: mode > 0 ? root.textPrimary : "white"
+                    opacity: mode > 0 ? 1 : 0.45
 
                     Text {
+                        anchors.left: parent.right
+                        anchors.leftMargin: -3
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: -3
 
+                        text: loopBtn.mode === 1 ? "1" : loopBtn.mode === 2 ? "•" : ""
+                        font.pixelSize: loopBtn.mode === 1 ? 9 : 14
+                        font.bold: true
 
-                        anchors.left:
-                        parent.right
-
-
-                        anchors.leftMargin:-3
-
-
-                        anchors.bottom:
-                        parent.bottom
-
-
-                        anchors.bottomMargin:-3
-
-
-
-                        text:
-
-                        loopBtn.mode === 1
-
-                        ?
-
-                        "1"
-
-                        :
-
-                        loopBtn.mode === 2
-
-                        ?
-
-                        "•"
-
-                        :
-
-                        ""
-
-
-
-                        font.pixelSize:
-
-                        loopBtn.mode === 1
-
-                        ?
-
-                        9
-
-                        :
-
-                        14
-
-
-
-                        font.bold:true
-
-
-                        color:"#ff006a"
-
-
+                        // 🎨 SYNC MÀU CHỮ PHỤ: Ký tự trạng thái (1 hoặc •) tự lướt màu theo điểm nhấn Album
+                        color: root.accentLight
                     }
-
-
                 }
-
-
 
                 MouseArea {
-
-                    anchors.fill:parent
-
-
-                    onClicked:
-
-                    Players.forceToggleLoop()
-
+                    anchors.fill: parent
+                    onClicked: Players.forceToggleLoop()
                 }
-
             }
 
+            // NÚT CÀI ĐẶT LYRICS (BỔ SUNG HOVER ĐỔI MÀU CHO SANG TRỌNG)
             Item {
-
-
-                width:36
-                height:36
+                width: 36
+                height: 36
 
                 Item {
-
-                    width:36
-                    height:36
-
+                    width: 36
+                    height: 36
 
                     Text {
+                        id: settingIconText
+                        anchors.centerIn: parent
+                        text: "⚙"
 
-                        anchors.centerIn:parent
+                        // 🎨 BỔ SUNG HOVER MÀU: Di chuột vào bánh răng sẽ sáng bừng tone màu Album nhạc!
+                        color: mouseSetting.containsMouse ? root.textPrimary : "white"
+                        font.pixelSize: 18
 
-                        text:"⚙"
-
-                        color:"white"
-
-                        font.pixelSize:18
-
+                        Behavior on color { ColorAnimation { duration: 150 } }
                     }
-
 
                     MouseArea {
-
-                        anchors.fill:parent
-
-
-                        onClicked:{
-
-
+                        id: mouseSetting
+                        anchors.fill: parent
+                        hoverEnabled: true // Kích hoạt nhận diện chuột hover
+                        onClicked: {
                             console.log("OPEN LYRICS SETTINGS")
-
-
                             toggleLyricsSettings()
-
-
                         }
-
                     }
-
                 }
-
             }
+
         }
     }
 
@@ -1419,83 +885,41 @@ Item {
 
 
             Repeater {
-
-
-                model:
-                root.bars.length
-
-
+                model: root.bars.length
 
                 Item {
+                    anchors.fill: parent
 
-
-                    anchors.fill:parent
-
-
-
-                    rotation:
-                    index*(360/48)
-
-
+                    rotation: index * (360 / 48)
 
                     Rectangle {
+                        anchors.bottom: parent.top
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottomMargin: 2
 
+                        width: 2
 
-                        anchors.bottom:
-                        parent.top
-
-
-                        anchors.horizontalCenter:
-                        parent.horizontalCenter
-
-
-                        anchors.bottomMargin:2
-
-
-
-                        width:2
-
-
-
-                        height:
-
-                        Math.min(
-
+                        height: Math.min(
                             50,
-
                             Math.max(
-
                                 4,
-
-                                root.smoothHeights[index]*1
-
+                                root.smoothHeights[index] * 1
                             )
-
                         )
 
+                        radius: 2
 
-
-                        radius:2
-
-
-
-                        color:
-
-                        index%2===0
-
-                        ?
-
-                        "#ff006a"
-
-                        :
-
-                        "#F5C2E7"
-
+                        // 🌟 ĐỒNG BỘ GRADIENT DỌC: Đổ dải màu vuốt mượt từ chân lên ngọn sóng
+                        // Cấu trúc khép kín tuyệt đối, không làm thừa thiếu ngoặc gây lệch vị trí Info Block!
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: root.textPrimary }
+                            GradientStop { position: 1.0; color: root.accentLight }
+                        }
                     }
-
                 }
-
             }
+
 
         }
 
@@ -1504,33 +928,21 @@ Item {
 
 
         Rectangle {
+            id: albumBorderCircle
 
+            anchors.centerIn: parent
 
-            id:albumBorderCircle
+            width: 110
+            height: 110
 
+            radius: 55
 
+            color: "#1a1625"
 
-            anchors.centerIn:parent
+            border.width: 2
 
-
-
-            width:110
-
-            height:110
-
-
-
-            radius:55
-
-
-
-            color:"#1a1625"
-
-
-
-            border.width:2
-
-            border.color:"#ff006a"
+            // 🎨 SYNC MÀU VIỀN ĐĨA: Đổi từ hồng tĩnh sang màu điểm nhấn Album nhạc đã kích sáng
+            border.color: root.accentLight
 
 
 
@@ -1685,8 +1097,6 @@ Item {
 
     }
 
-
-
     //
     // ===============================
     // FLOATING PROGRESS BAR
@@ -1707,8 +1117,6 @@ Item {
         height:40
 
 
-
-
         // CHỈ SỬA 2 DÒNG NÀY
 
         x:288
@@ -1716,66 +1124,43 @@ Item {
         y:210
 
 
-
-
-
-
         Rectangle {
+            id: progressTrack
 
+            width: parent.width
+            height: 4
+            radius: 2
 
-            id:progressTrack
+            // 🎨 SYNC NỀN RÃNH: Pha mờ màu chính của Album xuống 20% giúp thanh rãnh chìm xuống tinh tế
+            color: Qt.rgba(AlbumColors.primary.r, AlbumColors.primary.g, AlbumColors.primary.b, 0.20)
 
+            Rectangle {
+                id: progressFill
 
+                height: parent.height
+                width: parent.width * root.progress
+                radius: 2
 
-            width:
-            parent.width
+                // ❌ ĐÃ LOẠI BỎ thuộc tính color đơn sắc cũ
 
+                // 🌟 GIẢI PHÁP ĐẮT GIÁ: Tích hợp dải loang Gradient ngang phát quang theo tiến trình nhạc
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
 
-            height:4
+                    GradientStop {
+                        position: 0.0
+                        // Điểm bắt đầu (Bên trái): Màu chủ đạo đậm đà của Album nhạc
+                        color: root.albumPrimary
+                    }
 
-
-
-            radius:2
-
-
-
-            color:"#1d192b"
-
-
-
-
-            Rectangle{
-
-
-                id:progressFill
-
-
-
-                height:
-                parent.height
-
-
-
-                width:
-                parent.width *
-                root.progress
-
-
-
-                radius:2
-
-
-
-                color:"#ff006a"
-
+                    GradientStop {
+                        position: 1.0
+                        // Điểm kết thúc (Đầu vạch chạy bên phải): Màu sáng rực kịch trần tạo hiệu ứng đầu kim phát sáng
+                        color: root.textPrimary
+                    }
+                }
             }
-
         }
-
-
-
-
-
 
         MouseArea {
 
@@ -1875,7 +1260,7 @@ Item {
 
 
 
-            color:"#ff006a"
+            color: root.accentLight
 
 
 
@@ -1920,7 +1305,7 @@ Item {
 
 
 
-            color:"white"
+            color: root.accentLight
 
 
 
@@ -1969,152 +1354,52 @@ Item {
 
 
         // ========================================================
-        // INFO BLOCK
+        // INFO BLOCK (ĐỒNG BỘ MÀU STATE TÊN BÀI HÁT & NGHỆ SĨ)
         // ========================================================
-
-
         ColumnLayout {
+            id: middleInfoBlock
 
+            Layout.fillWidth: true
+            Layout.preferredHeight: 300
+            Layout.topMargin: 1
+            Layout.rightMargin: -155
 
-            id:middleInfoBlock
-
-
-
-            Layout.fillWidth:true
-
-
-
-            Layout.preferredHeight:300
-
-            Layout.topMargin:1
-
-            Layout.rightMargin:-155
-
-
-
-            spacing:4
-
-
-
-
-
+            spacing: 4
 
             ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
 
-
-                Layout.fillWidth:true
-
-
-
-                spacing:2
-
-
-
-
-
-
+                // 1. DÒNG HIỂN THỊ TÊN BÀI HÁT
                 Text {
-
-
-                    text:
-
-                    root.player
-
-                    ?
-
-                    root.player.trackTitle ||
-                    "Unknown Track"
-
-                    :
-
-                    "No Music Playing"
-
-
-
-
-                    font.pixelSize:14
-
-
-
-                    font.bold:true
-
-
-
-                    color:"white"
-
-
-
-                    horizontalAlignment:
-                    Text.AlignHCenter
-
-
-
-                    Layout.fillWidth:true
-
-
-
-                    elide:
-                    Text.ElideRight
-
+                    text: root.player ? (root.player.trackTitle || "Unknown Track") : "No Music Playing"
+                    font.pixelSize: 14
+                    font.bold: true
+                    color: "white" // Giữ màu trắng rực rỡ chuẩn chỉ
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
                 }
 
-
-
-
-
-
-
+                // 2. DÒNG HIỂN THỊ TÊN NGHỆ SĨ (ĐÃ VÁ LỖI ANCHORS)
                 Text {
+                    text: root.player ? (root.player.trackArtist || "Unknown Artist") : ""
+                    font.pixelSize: 11
 
+                    // 🎨 SYNC MÀU: Đổi sang màu xám khói Album đã lọc sáng dịu mắt theo bài hát [0.1]
+                    color: root.textSecondary
 
-                    text:
+                    // 🌟 VÁ LỖI BỐ CỤC: Xóa bỏ anchors lộn xộn, dùng Layout alignment chuẩn của ColumnLayout
+                    Layout.alignment: Qt.AlignHCenter
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
 
-                    root.player
-
-                    ?
-
-                    root.player.trackArtist ||
-                    "Unknown Artist"
-
-                    :
-
-                    ""
-
-
-
-                    font.pixelSize:11
-
-
-
-                    color:"#F5C2E7"
-
-
-                    anchors.horizontalCenter:
-                    parent.horizontalCenter
-
-
-                    anchors.verticalCenter:
-                    parent.verticalCenter
-
-                    horizontalAlignment:
-                    Text.AlignHCenter
-
-
-                    verticalAlignment:
-                    Text.AlignVCenter
-
-                    Layout.topMargin:20
-
-                    Layout.preferredWidth:300
-
-
-
-                    elide:
-                    Text.ElideRight
-
+                    Layout.topMargin: 4 // Thu gọn margin từ 20px xuống 4px để hai chữ khít sát nhau tinh tế
+                    Layout.preferredWidth: 300
+                    elide: Text.ElideRight
                 }
-
             }
+
 
 
 
@@ -2135,31 +1420,22 @@ Item {
 
 
                 Rectangle {
+                    width: 110
+                    height: 22
 
+                    x: 360
+                    y: -130
 
-                    width:110
+                    radius: 6
 
-                    height:22
+                    // 🎨 SYNC MÀU NỀN: Ép màu chính của Album mờ 16% tạo hiệu ứng hộp kính mờ cao cấp
+                    color: Qt.rgba(AlbumColors.primary.r, AlbumColors.primary.g, AlbumColors.primary.b, 0.16)
 
+                    border.width: 1
 
+                    // 🎨 SYNC MÀU VIỀN: Đổi từ hồng tĩnh sang màu điểm nhấn Album nhạc đã kích sáng
+                    border.color: root.accentLight
 
-                    x:360
-
-                    y:-130
-
-
-
-                    radius:6
-
-
-
-                    color:"#3d1b32"
-
-
-
-                    border.width:1
-
-                    border.color:"#ff006a"
 
 
 
