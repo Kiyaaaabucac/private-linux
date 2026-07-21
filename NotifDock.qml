@@ -264,6 +264,38 @@ Item {
                     id: localNotifModel
                 }
 
+                    // 🌟 THUẬT TOÁN BỐC PATH ICON ỨNG DỤNG BẤT TỬ
+    function getExactIconPath(appName, iconSource) {
+        // Trường hợp 1: Nếu D-Bus bắn về đường dẫn file tuyệt đối, găm xài luôn
+        if (iconSource && (iconSource.startsWith("/") || iconSource.startsWith("file://"))) {
+            return iconSource.startsWith("file://") ? iconSource : "file://" + iconSource;
+        }
+
+        let lowerApp = String(appName).toLowerCase();
+        let lowerIcon = String(iconSource).toLowerCase();
+
+        // Trường hợp 2: Bảng ánh xạ cứng PNG chất lượng cao cho các App phổ biến (Tránh bị SVG mờ)
+        let appMap = {
+            "discord": "file:///usr/share/icons/hicolor/256x256/apps/discord.png",
+            "spotify": "file:///usr/share/icons/hicolor/256x256/apps/spotify.png",
+            "firefox": "file:///usr/share/icons/hicolor/256x256/apps/firefox.png",
+            "google-chrome": "file:///usr/share/icons/google-chrome.png",
+            "tauon": "file:///usr/share/icons/hicolor/512x512/apps/tauon-music-box.png"
+        };
+
+        if (appMap[lowerApp]) return appMap[lowerApp];
+        if (appMap[lowerIcon]) return appMap[lowerIcon];
+
+        // Trường hợp 3: Fallback tự động dò kho Icon Theme mặc định của Linux
+        if (iconSource && iconSource !== "") {
+            return "image://icon/" + iconSource;
+        }
+
+        // Trả về ảnh bánh răng hệ thống nếu app không có ảnh
+        return "file:///usr/share/icons/hicolor/scalable/apps/system-software-update.svg";
+    }
+
+
                 NotificationServer {
                     id: internalServer
 
