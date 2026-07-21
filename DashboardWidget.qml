@@ -1,10 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 
 import "../../common"
 import "./components"
 import "./modules/media"
 import "./modules/performance"
+import "../../services"
 
 // Nạp folder widgets con thông qua alias MyWidgets chống trùng tên hệ thống
 import "./widgets" as MyWidgets
@@ -16,14 +18,25 @@ Item {
     required property var screenState
     required property real nonAnimWidth
 
+    // 🧠 BỘ LỌC ĐA SẮC ĐỘNG (ALBUM COLOR STATE MATRIX - ĐỒNG BỘ CHO TOÀN BỘ CÁC TAB)
+    property color albumPrimary: AlbumColors.primary
+    property color textPrimary: Qt.lighter(albumPrimary, 3.0)
+    property color accentLight: Qt.lighter(albumPrimary, 1.5)
+    Behavior on albumPrimary { ColorAnimation { duration: 500 } }
+
     // BIẾN ĐIỀU PHỐI ĐỒNG BỘ TAB
     property int currentTab: 0
 
     anchors.fill: parent
 
+    // Tải font Anurati nghệ thuật làm tài nguyên cục bộ cho khay Tab
+    FontLoader {
+        id: anuratiFont
+        source: "./Anurati-Regular.otf"
+    }
+
     // =========================================================================================
     // 🎯 SIÊU BẢN VÁ: BÀNH TRƯỚC LÒNG KÍNH MẸ (850PX - 400PX) GIẢI CỨU ĐỒ THỊ 100%
-    // Phóng đại thênh thang diện tích viền đệm ngoài để cứu toàn bộ thông tin không bị cắt cụt!
     // =========================================================================================
     GlassCard {
         id: unifiedMegaMasterGlass
@@ -35,14 +48,11 @@ Item {
         border.width: 1
         border.color: "#1affffff"
 
-        // Bề ngang động: Tab 0 (Dashboard) rộng 810px, Tab 1 & 2 BÀNH TRƯỚNG lên hẳn 850px siêu rộng rãi!
-        width: root.currentTab === 0 ? 810 : 850
+        width: root.currentTab === 0 ? 810 : 810
+        height: root.currentTab === 0 ? 530 : 400
 
-        // Chiều cao động: Tab 0 cao 740px, Tab 1 & 2 DÂNG CAO lên hẳn 400px cho hộp con thở thoải mái!
-        height: root.currentTab === 0 ? 740 : 400
-
-        Behavior on width { NumberAnimation { duration: 380; easing.type: Easing.OutQuart } }
-        Behavior on height { NumberAnimation { duration: 380; easing.type: Easing.OutQuart } }
+        Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutQuart } }
+        Behavior on height { NumberAnimation { duration: 260; easing.type: Easing.OutQuart } }
 
         ColumnLayout {
             anchors.fill: parent
@@ -50,7 +60,7 @@ Item {
             spacing: 14
 
             // ----------------------------------------------------------------===
-            // 🔋 PHẦN GHÉP NỐI 1: THANH TAB VIÊN NHỘNG CHUẨN FILE TAB.QML CỦA BRO
+            // 🔋 PHẦN GHÉP NỐI 1: THANH TAB VIÊN NHỘNG (ĐÃ ĐỒNG BỘ MÀU CHUNG 100%)
             // ----------------------------------------------------------------===
             Item {
                 Layout.fillWidth: true
@@ -61,7 +71,7 @@ Item {
                     anchors.centerIn: parent
                     spacing: 10
 
-                    property var tabModel: ["Dashboard", "Media", "Performance"]
+                    property var tabModel: ["Poor Man", "Vinnahouse", "My Potato"]
 
                     Repeater {
                         model: parent.tabModel
@@ -71,15 +81,77 @@ Item {
                             height: 45
                             radius: 22
 
-                            color: index === root.currentTab ? "#f5c2e7" : "#ff3392"
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            // 🎯 ĐÃ ĐỒNG BỘ MÀU NỀN: Tất cả các Tab khi được chọn hoặc chờ đều bám khít màu hệ thống bài hát
+                            color: {
+                                if (index === root.currentTab) {
+                                    return root.textPrimary; // Khi được chọn: Hiện màu sáng rực rỡ kịch trần
+                                } else {
+                                    return Qt.rgba(AlbumColors.primary.r, AlbumColors.primary.g, AlbumColors.primary.b, 0.25); // Khi chờ: Đồng bộ nền mờ kính 25% màu Album
+                                }
+                            }
+                            Behavior on color { ColorAnimation { duration: 200 } }
 
-                            Text {
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: index === root.currentTab ? "#1e1e2e" : "white"
-                                font.pixelSize: 15
-                                font.weight: Font.Medium
+                            Canvas {
+                                id: tabTextCanvas
+                                anchors.fill: parent
+
+                                Connections {
+                                    target: root
+                                    function onCurrentTabChanged() { tabTextCanvas.requestPaint() }
+                                    function onTextPrimaryChanged() { tabTextCanvas.requestPaint() }
+                                }
+
+                                onPaint: {
+                                    var ctx = getContext("2d");
+                                    ctx.reset();
+
+                                    ctx.font = "bold 13px '" + anuratiFont.name + "'";
+                                    ctx.textAlign = "center";
+                                    ctx.textBaseline = "middle";
+
+                                    // Giữ nguyên khoảng cách chữ Cinematic rộng mở của bạn
+                                    ctx.letterSpacing = "20px";
+
+                                    var txt = modelData.toUpperCase();
+
+                                    // 🎯 ĐÃ ĐỒNG BỘ HOÀN TOÀN BIẾN ĐỔI CHỮ CHO CẢ 3 TAB
+                                    // CHẾ ĐỘ 1: KHI ĐANG Ở TRONG TAB (ĐƯỢC CHỌN)
+                                    if (index === root.currentTab) {
+                                        // Hào quang phát sáng Neon dịu nhẹ bao quanh toàn bộ chữ của cả 3 Tab
+                                        ctx.shadowColor = root.accentLight;
+                                        ctx.shadowBlur = 8;
+                                        ctx.shadowOffsetX = 0;
+                                        ctx.shadowOffsetY = 0;
+
+                                        // Ruột chữ chuyển màu Gradient chéo ngang mượt mà bám sát CAVA
+                                        var grad = ctx.createLinearGradient(0, 0, width, 0);
+                                        grad.addColorStop(0.0, root.textPrimary);
+                                        grad.addColorStop(1.0, root.accentLight);
+                                        ctx.fillStyle = grad;
+
+                                        // Vẽ ruột chữ loang màu nghệ thuật
+                                        ctx.fillText(txt, width / 2, height / 2);
+
+                                        // Đổ thêm viền đen sẫm sắc nét bọc ngoài nét cắt font Anurati chống rách hình
+                                        ctx.shadowBlur = 0;
+                                        ctx.strokeStyle = "#16111a";
+                                        ctx.lineWidth = 1.4;
+                                        ctx.strokeText(txt, width / 2, height / 2);
+                                    }
+                                    // CHẾ ĐỘ 2: TRẠNG THÁI CHỜ (KHÔNG ĐƯỢC CHỌN)
+                                    else {
+                                        ctx.shadowBlur = 0;
+                                        if (index === 1) {
+                                            ctx.fillStyle = root.textPrimary; // Khôi phục chữ Vinnahouse màu sáng nhạc
+                                        } else {
+                                            ctx.fillStyle = "white";
+                                        }
+                                    }
+
+                                    // Vẽ chữ phẳng cho các tab còn lại
+                                    ctx.fillText(txt, width / 2, height / 2);
+                                }
+
                             }
 
                             MouseArea {
@@ -94,12 +166,13 @@ Item {
 
             // Đường chỉ phân cách Neon chạy xuyên lòng kính Master
             Rectangle {
-                Layout.preferredWidth: parent.width - 40
+                Layout.preferredWidth: parent.width - 30
                 Layout.preferredHeight: 1
                 color: "#ff006a"
                 Layout.alignment: Qt.AlignHCenter
                 opacity: 0.25
             }
+
 
             // ----------------------------------------------------------------===
             // 🎞️ KHỐI CHỨA TRƯỢT SLIDE: KHÓA CHẾ CỐ ĐỊNH PHÉP DỊCH 790PX TUYỆT ĐỐI CHỐNG LỘ LỀ TAB KHÁC
@@ -111,7 +184,8 @@ Item {
                 Layout.preferredWidth: 790
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignHCenter
-                clip: true // Khóa clip bảo vệ tuyệt đối không cho rò rỉ hình ảnh ra ngoài rìa kính
+                clip: true
+                // Khóa clip bảo vệ tuyệt đối không cho rò rỉ hình ảnh ra ngoài rìa kính
 
                 Row {
                     id: slidingRow
@@ -141,7 +215,7 @@ Item {
                     // KHỐI TAB 1 (MEDIA RỘNG LỌT TÂM 790PX)
                     Item {
                         width: 790
-                        height: parent.height
+                        height:parent.height
                         Loader { anchors.fill: parent; sourceComponent: mediaPage }
                     }
 
@@ -237,24 +311,160 @@ Item {
     // ==================== COMPONENT PAGE 1: KHUNG CON MEDIA NẰM GỌN GÀNG LỌT TÂM KÍNH MẸ BAO LA ====================
     Component {
         id: mediaPage
-        ColumnLayout {
+
+
+        Item {
+
             anchors.fill: parent
 
-            // Giữ nguyên vẹn chiếc vỏ GlassCard con 740x240px chứa đầy đủ sóng nhạc CAVA của bro
+
+
+            // =====================
+            // MEDIA CARD
+            // =====================
+
             GlassCard {
-                Layout.preferredWidth: 760
-                Layout.preferredHeight: 240
 
-                // CĂN TÂM HOÀNG GIA: Ghim chuẩn chính giữa lòng kính mẹ 850x400px thênh thang mới,
-                // giải phóng khe hở lề biên đệm cực kỳ rộng rãi, bẻ gãy hoàn toàn lỗi cắt chữ mất thông tin!
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
-                Layout.topMargin: 12 // Khoảng đệm trần 12px thoáng mắt siêu sang
+                id:mediaCard
 
-                MediaExpanded { anchors.fill: parent }
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+
+
+                anchors.topMargin:12
+
+
+                clip:true
+
+
+                width:parent.width-40
+                height:parent.height-11
+
+
+
+
+                MediaExpanded {
+
+                    anchors.fill:parent
+
+
+
+                    onOpenLyricsSettings:{
+
+
+                        console.log(
+                            "OPEN LYRICS FROM MEDIA"
+                        )
+
+
+                        if(lyricsSettingsLoader.item)
+                        {
+
+                            lyricsSettingsLoader.item.open()
+
+                        }
+
+
+                        else
+                        {
+
+                            lyricsSettingsLoader.active=true
+
+
+                            Qt.callLater(()=>{
+
+
+                                if(lyricsSettingsLoader.item)
+                                {
+
+                                    lyricsSettingsLoader.item.open()
+
+                                }
+
+
+                            })
+
+
+                        }
+
+
+                    }
+
+
+                }
+
+
             }
 
-            Item { Layout.fillHeight: true }
         }
+
+    }
+
+
+    // =====================
+    // LYRICS SETTINGS OVERLAY
+    // OUTSIDE MEDIA CARD
+    // =====================
+
+
+    Item {
+
+        id:overlayLayer
+
+        anchors.fill:parent
+
+        z:9999
+
+
+
+        Loader {
+
+            id:lyricsSettingsLoader
+
+
+            width:200
+            height:550
+
+
+            anchors.right:parent.right
+            anchors.top:parent.top
+
+
+            anchors.rightMargin:350
+            anchors.topMargin:20
+
+
+
+            active:true
+
+
+            source:
+            "./modules/media/LyricsSettings.qml"
+
+
+
+            onLoaded:{
+
+
+                item.width=width
+
+                item.height=height
+
+
+                console.log(
+                    "LYRICS SIZE:",
+                    item.width,
+                    item.height
+                )
+
+
+            }
+
+
+        }
+
+
     }
 
     // ==================== COMPONENT PAGE 2: KHUNG CON PERFORMANCE NẰM GỌN GÀNG LỌT TÂM KÍNH MẸ BAO LA ====================
@@ -265,8 +475,10 @@ Item {
 
             // Giữ nguyên vẹn chiếc vỏ GlassCard con 740x240px chứa đầy đủ đồ thị Network và RAM của bro
             GlassCard {
-                Layout.preferredWidth: 740
+                Layout.preferredWidth: 730
                 Layout.preferredHeight: 240
+                Layout.rightMargin: 1
+
 
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
                 Layout.topMargin: 12
