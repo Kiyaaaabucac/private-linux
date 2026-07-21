@@ -837,199 +837,129 @@ Item {
         }
     }
 
-    // ========================================================
-    // ALBUM + CAVA
-    // ========================================================
-
-
+    // =====================================================================
+    // ALBUM + CAVA: Đã nâng cấp lên Style KINETIC GRID đối xứng (Có thanh đỉnh độ trễ)
+    // =====================================================================
     Item {
-
-
-        id:radialAndummidk
-
-
-
-        width:250
-
-        height:40
-
-
-
-
-        // CHỈ SỬA 2 DÒNG NÀY
-
-        x:-15
-
-        y:95
-
-
-
-
-
+        id: radialAndummidk
+        width: 250
+        height: 40
+        // Giữ nguyên tọa độ chuẩn thiết kế ban đầu của máy bạn
+        x: -15
+        y: 95
 
         Item {
+            id: radialCavaContainer
+            anchors.centerIn: parent
+            width: 110
+            height: 110
 
-
-            id:radialCavaContainer
-
-
-            anchors.centerIn:parent
-
-
-            width:110
-
-            height:110
-
-
-
-
+            // 🌟 BỘ KHUẾCH ĐẠI HÀO QUANG PHÁT SÁNG THEO NHẠC CHUẨN LOCKSCREEN
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                blurEnabled: true
+                blur: 0.15
+                shadowEnabled: true
+                shadowBlur: 0.6 * 1.2
+                shadowColor: root.textPrimary
+                shadowOpacity: 0.60
+            }
 
             Repeater {
-                model: root.bars.length
+                model: root.bars.length // Chạy theo 48 thanh tần số
 
                 Item {
                     anchors.fill: parent
-
                     rotation: index * (360 / 48)
 
+                    // -------------------------------------------------------------
+                    // ⚡ 1. VẼ THÂN TRỤ CỘT SÓNG TRỰC XUNG (CO GIÃN TỪ CHÂN LÊN NGỌN)
+                    // -------------------------------------------------------------
                     Rectangle {
+                        id: barBody
                         anchors.bottom: parent.top
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottomMargin: 2
-
                         width: 2
 
-                        height: Math.min(
-                            50,
-                            Math.max(
-                                4,
-                                root.smoothHeights[index] * 1
-                            )
-                        )
-
+                        height: Math.min(50, Math.max(4, root.smoothHeights[index] * 1))
                         radius: 2
 
-                        // 🌟 ĐỒNG BỘ GRADIENT DỌC: Đổ dải màu vuốt mượt từ chân lên ngọn sóng
-                        // Cấu trúc khép kín tuyệt đối, không làm thừa thiếu ngoặc gây lệch vị trí Info Block!
                         gradient: Gradient {
                             orientation: Gradient.Vertical
                             GradientStop { position: 0.0; color: root.textPrimary }
                             GradientStop { position: 1.0; color: root.accentLight }
                         }
                     }
+
+                    // -------------------------------------------------------------
+                    // ⚡ 2. VẼ THANH ĐỈNH TRÊN CÓ ĐỘ TRỄ VẬT LÝ (TOP CAP SHIELD)
+                    // -------------------------------------------------------------
+                    Rectangle {
+                        id: topCapShield
+                        anchors.bottom: barBody.top
+                        anchors.bottomMargin: 3
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 3
+                        height: 2
+                        radius: 1
+                        color: root.textPrimary
+                    }
+
+                    // -------------------------------------------------------------
+                    // ⚡ 3. VẼ THANH ĐỈNH DƯỚI ĐỐI XỨNG QUA CHÂN SÓNG (BOTTOM CAP SHIELD)
+                    // -------------------------------------------------------------
+                    Rectangle {
+                        anchors.top: parent.top
+                        anchors.topMargin: 2
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 3
+                        height: 2
+                        radius: 1
+                        color: root.textPrimary
+                    }
+                }
+            }
+        }
+
+        // VÒNG TRÒN BIÊN NIÊN ĐĨA NHẠC CHỦ ĐẠO (ĐÃ ĐƯỢC VÁ SẮP XẾP THẺ TRẬT TỰ KHÍT KHAO)
+        Rectangle {
+            id: albumBorderCircle
+            anchors.centerIn: parent
+            width: 110
+            height: 110
+            radius: 55
+            color: "#1a1625"
+            border.width: 2
+            border.color: root.accentLight
+            z: 2
+
+            Item {
+                anchors.fill: parent
+                rotation: root.discAngle
+
+                Image {
+                    id: albumArtSource
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    source: root.player ? Players.getArtUrl(root.player) : ""
+                    fillMode: Image.PreserveAspectCrop
+                    smooth: true
+                    mipmap: true
                 }
             }
 
-
+            // 🎯 ĐÃ VÁ LỖI CÚ PHÁP: Đưa mặt nạ maskCircle nằm lọt lòng trong albumBorderCircle đúng kỹ thuật
+            Rectangle {
+                id: maskCircle
+                anchors.fill: parent
+                anchors.margins: 3
+                radius: width / 2
+                visible: false
+            }
         }
+    }
 
-
-
-
-
-        Rectangle {
-            id: albumBorderCircle
-
-            anchors.centerIn: parent
-
-            width: 110
-            height: 110
-
-            radius: 55
-
-            color: "#1a1625"
-
-            border.width: 2
-
-            // 🎨 SYNC MÀU VIỀN ĐĨA: Đổi từ hồng tĩnh sang màu điểm nhấn Album nhạc đã kích sáng
-            border.color: root.accentLight
-
-
-
-            z:2
-
-
-
-
-
-            Item {
-
-
-                anchors.fill:parent
-
-
-                rotation:
-                root.discAngle
-
-
-
-
-
-                Image {
-
-
-                    id:albumArtSource
-
-
-
-                    anchors.fill:parent
-
-
-
-                    anchors.margins:3
-
-
-
-                    source:
-
-                    root.player
-
-                    ?
-
-                    Players.getArtUrl(root.player)
-
-                    :
-
-                    ""
-
-
-
-                    fillMode:
-                    Image.PreserveAspectCrop
-
-
-
-                    visible:false
-
-                }
-
-
-
-
-
-                Rectangle {
-
-
-                    id:maskCircle
-
-
-
-                    anchors.fill:parent
-
-
-
-                    anchors.margins:3
-
-
-
-                    radius:
-                    width/2
-
-
-
-                    visible:false
-
-                }
 
 
 
@@ -1093,9 +1023,9 @@ Item {
 
             }
 
-        }
 
-    }
+
+
 
     //
     // ===============================
@@ -1318,6 +1248,7 @@ Item {
         }
 
     }
+    
 
     // =====================================================
     // LYRICS SETTINGS PANEL
